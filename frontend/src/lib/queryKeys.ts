@@ -1,0 +1,46 @@
+import type { PhotoFilters, SearchFilters } from '@/types'
+
+export const qk = {
+  me: ['me'] as const,
+  authConfig: ['auth-config'] as const,
+  photos: (f: PhotoFilters) => ['photos', f] as const,
+  photosAll: ['photos'] as const,
+  buckets: (f: PhotoFilters) => ['buckets', f] as const,
+  photo: (id: number) => ['photo', id] as const,
+  albums: (q?: string) => ['albums', q ?? ''] as const,
+  albumsAll: ['albums'] as const,
+  album: (id: number) => ['album', id] as const,
+  albumMedia: (id: number) => ['album-media', id] as const,
+  search: (f: SearchFilters) => ['search', f] as const,
+  suggestions: (q: string) => ['suggestions', q] as const,
+  places: ['places'] as const,
+  people: (f: object) => ['people', f] as const,
+  peopleAll: ['people'] as const,
+  person: (id: number) => ['person', id] as const,
+  personMedia: (id: number) => ['person-media', id] as const,
+  libraries: ['libraries'] as const,
+  trash: ['trash'] as const,
+  shares: ['shares'] as const,
+  sharedWithMe: ['shared-with-me'] as const,
+  publicShare: (token: string) => ['public-share', token] as const,
+  users: (q: string) => ['user-search', q] as const,
+  admin: {
+    dashboard: ['admin', 'dashboard'] as const,
+    libraries: ['admin', 'libraries'] as const,
+    access: (id: number) => ['admin', 'access', id] as const,
+    sites: (q: string) => ['admin', 'sites', q] as const,
+    drives: (siteId: string) => ['admin', 'drives', siteId] as const,
+    children: (driveId: string, itemId: string | null) => ['admin', 'children', driveId, itemId] as const,
+    syncStatus: ['admin', 'sync-status'] as const,
+    syncJobs: (page: number) => ['admin', 'sync-jobs', page] as const,
+    syncLogs: (id: number) => ['admin', 'sync-logs', id] as const,
+    audit: (f: object) => ['admin', 'audit', f] as const,
+    users: (page: number) => ['admin', 'users', page] as const,
+    settings: ['admin', 'settings'] as const,
+    errors: ['admin', 'errors'] as const,
+    facesStatus: ['admin', 'faces-status'] as const,
+  },
+}
+
+/** Prefixos de listas de media que devem ser invalidadas após mutações. */
+export const MEDIA_LIST_PREFIXES = ['photos', 'search', 'album-media', 'person-media', 'trash', 'buckets'] as const

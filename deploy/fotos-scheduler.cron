@@ -1,0 +1,2 @@
+# /etc/cron.d/fotos-scheduler — Laravel Scheduler (sincronização periódica, retenção de logs, cache)
+* * * * * www-data cd /var/www/fotos/backend && php artisan schedule:run >> /dev/null 2>&1
