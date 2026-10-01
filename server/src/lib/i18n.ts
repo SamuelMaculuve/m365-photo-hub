@@ -1,0 +1,93 @@
+export type Locale = 'pt' | 'en'
+
+const messages: Record<Locale, Record<string, string>> = {
+  pt: {
+    'errors.unauthenticated': 'A sua sessão expirou. Entre novamente com a sua conta Microsoft.',
+    'errors.forbidden': 'Não tem permissão para realizar esta acção.',
+    'errors.not_found': 'O recurso pedido não existe ou não está disponível para si.',
+    'errors.conflict': 'Esta operação não pode ser realizada no estado actual.',
+    'errors.validation_error': 'Alguns dados enviados não são válidos.',
+    'errors.too_many_requests': 'Demasiados pedidos. Aguarde um momento e tente novamente.',
+    'errors.media_unavailable': 'Esta fotografia está temporariamente indisponível porque o ficheiro não pôde ser obtido do Microsoft 365.',
+    'errors.graph_unavailable': 'Não foi possível comunicar com o Microsoft 365. Tente novamente dentro de alguns minutos.',
+    'errors.graph_throttled': 'O Microsoft 365 está a limitar temporariamente os pedidos. Tente novamente dentro de alguns instantes.',
+    'errors.sync_error': 'Ocorreu um erro durante a sincronização.',
+    'errors.share_expired': 'Este link de partilha expirou ou foi revogado.',
+    'errors.share_password_required': 'Este link está protegido por palavra-passe.',
+    'errors.share_password_invalid': 'Palavra-passe incorrecta.',
+    'errors.internal_error': 'Ocorreu um erro inesperado. A equipa técnica foi notificada.',
+    'errors.login_failed': 'Não foi possível concluir o início de sessão com a Microsoft.',
+    'errors.account_disabled': 'A sua conta foi desactivada na aplicação.',
+    'errors.sync_running': 'Já existe uma sincronização em curso para este armazenamento.',
+    'errors.writes_disabled': 'Esta biblioteca não permite alterações de ficheiros.',
+    'errors.public_links_disabled': 'Os links públicos não estão activos para este conteúdo.',
+    'errors.ai_unavailable': 'A análise por IA está temporariamente indisponível.',
+    'validation.invalid': 'O valor indicado não é válido.',
+    'validation.required': 'Este campo é obrigatório.',
+    'admin.validate.token': 'Identidade Microsoft obtida (modo: :mode).',
+    'admin.validate.drive': 'Armazenamento ":name" acessível.',
+    'admin.validate.folder': 'Pasta ":name" acessível.',
+    'admin.validate.not_folder': '":name" não é uma pasta.',
+    'admin.validate.delta': 'Consultas delta disponíveis (sincronização incremental).',
+    'admin.validate.forbidden': 'Sem permissão para ":name". Conceda acesso à aplicação (Sites.Selected) neste site.',
+    'admin.validate.not_found': '":name" não foi encontrado. Pode ter sido movido ou eliminado.',
+    'admin.validate.unauthorised': 'As credenciais da aplicação foram rejeitadas pela Microsoft.',
+    'admin.validate.graph_error': 'Erro do Microsoft Graph ao aceder a ":name" (:code).',
+    'admin.validate.unexpected': 'Erro inesperado ao validar ":name".',
+    'admin.validate.no_roots': 'A biblioteca não tem pastas configuradas.',
+    'admin.validate.demo': 'Biblioteca de demonstração (sem Microsoft 365).',
+    'admin.root_in_use': 'A pasta ":name" já pertence a outra biblioteca.',
+    'admin.sites_hint': 'Se não encontrar o site, cole o URL completo (ex.: https://organizacao.sharepoint.com/sites/Fotos).',
+    'admin.cannot_change_self': 'Não pode alterar o seu próprio papel nem desactivar a sua conta.',
+  },
+  en: {
+    'errors.unauthenticated': 'Your session has expired. Please sign in again with your Microsoft account.',
+    'errors.forbidden': 'You do not have permission to perform this action.',
+    'errors.not_found': 'The requested resource does not exist or is not available to you.',
+    'errors.conflict': 'This operation cannot be performed in the current state.',
+    'errors.validation_error': 'Some of the submitted data is invalid.',
+    'errors.too_many_requests': 'Too many requests. Please wait a moment and try again.',
+    'errors.media_unavailable': 'This photo is temporarily unavailable because the file could not be retrieved from Microsoft 365.',
+    'errors.graph_unavailable': 'Could not reach Microsoft 365. Please try again in a few minutes.',
+    'errors.graph_throttled': 'Microsoft 365 is temporarily limiting requests. Please try again shortly.',
+    'errors.sync_error': 'An error occurred during synchronisation.',
+    'errors.share_expired': 'This share link has expired or been revoked.',
+    'errors.share_password_required': 'This link is password protected.',
+    'errors.share_password_invalid': 'Incorrect password.',
+    'errors.internal_error': 'An unexpected error occurred. The technical team has been notified.',
+    'errors.login_failed': 'Could not complete sign-in with Microsoft.',
+    'errors.account_disabled': 'Your account has been disabled in the application.',
+    'errors.sync_running': 'A synchronisation is already running for this storage.',
+    'errors.writes_disabled': 'This library does not allow file changes.',
+    'errors.public_links_disabled': 'Public links are not enabled for this content.',
+    'errors.ai_unavailable': 'AI analysis is temporarily unavailable.',
+    'validation.invalid': 'The value provided is invalid.',
+    'validation.required': 'This field is required.',
+    'admin.validate.token': 'Microsoft identity obtained (mode: :mode).',
+    'admin.validate.drive': 'Storage ":name" is accessible.',
+    'admin.validate.folder': 'Folder ":name" is accessible.',
+    'admin.validate.not_folder': '":name" is not a folder.',
+    'admin.validate.delta': 'Delta queries available (incremental sync).',
+    'admin.validate.forbidden': 'No permission for ":name". Grant the application access (Sites.Selected) on this site.',
+    'admin.validate.not_found': '":name" was not found. It may have been moved or deleted.',
+    'admin.validate.unauthorised': 'The application credentials were rejected by Microsoft.',
+    'admin.validate.graph_error': 'Microsoft Graph error accessing ":name" (:code).',
+    'admin.validate.unexpected': 'Unexpected error validating ":name".',
+    'admin.validate.no_roots': 'The library has no folders configured.',
+    'admin.validate.demo': 'Demo library (no Microsoft 365).',
+    'admin.root_in_use': 'Folder ":name" already belongs to another library.',
+    'admin.sites_hint': 'If you cannot find the site, paste the full URL (e.g. https://organisation.sharepoint.com/sites/Photos).',
+    'admin.cannot_change_self': 'You cannot change your own role or disable your own account.',
+  },
+}
+
+export function translate(locale: Locale, key: string, params: Record<string, string | number> = {}): string {
+  let text = messages[locale][key] ?? messages.pt[key] ?? key
+  for (const [k, v] of Object.entries(params)) text = text.replaceAll(`:${k}`, String(v))
+  return text
+}
+
+export function pickLocale(acceptLanguage: string | undefined | null): Locale {
+  const first = (acceptLanguage ?? '').split(',')[0]?.trim().toLowerCase() ?? ''
+  return first.startsWith('en') ? 'en' : 'pt'
+}

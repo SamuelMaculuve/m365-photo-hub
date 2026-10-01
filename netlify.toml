@@ -1,0 +1,17 @@
+# m365-photo-hub — frontend estático (React) + backend em Netlify Functions + Netlify DB (Postgres).
+[build]
+  command = "npm ci --prefix server && npm ci --prefix frontend && npm run db:migrate --prefix server && npm run build --prefix frontend"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "server/functions"
+  node_bundler = "esbuild"
+
+# SPA: todas as rotas do React caem no index.html (as funções têm prioridade em /api, /auth e /sanctum).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
