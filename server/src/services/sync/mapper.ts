@@ -1,5 +1,6 @@
 import type { MediaMetadata } from '../../db/schema'
 import { guessMime, type MediaType } from '../media-type'
+import { resolvePlace } from '../places'
 
 /** Datas EXIF inválidas (ex.: 1970, 0000) são descartadas. */
 function date(value: unknown): Date | null {
@@ -24,6 +25,7 @@ export function toMediaAttributes(item: Record<string, any>, type: MediaType) {
   const modifiedAt = date(item.fileSystemInfo?.lastModifiedDateTime ?? item.lastModifiedDateTime)
   const lat = num(location.latitude)
   const lng = num(location.longitude)
+  const place = lat !== null && lng !== null ? resolvePlace(lat, lng) : null
 
   const metadata: MediaMetadata & Record<string, unknown> = Object.fromEntries(Object.entries({
     camera_make: photo.cameraMake ?? null,
@@ -53,6 +55,10 @@ export function toMediaAttributes(item: Record<string, any>, type: MediaType) {
     sortAt: takenAt ?? createdAt,
     latitude: lat,
     longitude: lng,
+    placeName: place?.name ?? null,
+    placeRegion: place?.region ?? null,
+    placeCountry: place?.country ?? null,
+    placeDistanceKm: place?.distanceKm ?? null,
     locationSource: lat !== null && lng !== null ? 'graph' : null,
     checksum: (item.file?.hashes?.quickXorHash ?? item.file?.hashes?.sha256Hash ?? null) as string | null,
     etag: (item.eTag as string | undefined) ?? null,

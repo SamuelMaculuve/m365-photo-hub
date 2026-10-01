@@ -4,14 +4,19 @@ import { getDb } from './db/client'
 import { clientIp, type AppEnv } from './lib/context'
 import { AppError, ValidationError } from './lib/errors'
 import { pickLocale, translate, type Locale } from './lib/i18n'
+import { requestContext } from './lib/request-context'
 import { csrfMiddleware, endSession, sessionMiddleware } from './lib/session'
 import { authRoutes } from './routes/auth'
 import { meRoutes } from './routes/me'
 import { photoRoutes } from './routes/photos'
 import { searchRoutes } from './routes/search'
+import { albumRoutes } from './routes/albums'
+import { shareRoutes } from './routes/shares'
+import { locationRoutes } from './routes/location'
 import { adminGraphRoutes } from './routes/admin/graph'
 import { adminLibraryRoutes } from './routes/admin/libraries'
 import { adminSyncRoutes } from './routes/admin/sync'
+import { adminMiscRoutes } from './routes/admin/misc'
 
 /** API completa (rotas /api, /auth e /sanctum), servida por uma Netlify Function ou pelo servidor de desenvolvimento. */
 export function createApp() {
@@ -28,7 +33,7 @@ export function createApp() {
   app.use('*', async (c, next) => {
     const user = c.get('user')
     if (user && (user.locale === 'pt' || user.locale === 'en')) c.set('locale', user.locale as Locale)
-    await next()
+    await requestContext.run({ locale: c.get('locale') }, next)
   })
   app.use('*', csrfMiddleware)
 
@@ -37,9 +42,13 @@ export function createApp() {
   app.route('/api', meRoutes)
   app.route('/api', photoRoutes)
   app.route('/api', searchRoutes)
+  app.route('/api', albumRoutes)
+  app.route('/api', shareRoutes)
+  app.route('/api', locationRoutes)
   app.route('/api/admin', adminLibraryRoutes)
   app.route('/api/admin', adminGraphRoutes)
   app.route('/api/admin', adminSyncRoutes)
+  app.route('/api/admin', adminMiscRoutes)
 
   app.notFound((c) => c.json({ error: { code: 'not_found', message: translate(c.get('locale') ?? 'pt', 'errors.not_found') } }, 404))
 

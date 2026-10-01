@@ -428,4 +428,6 @@ export type Media = typeof media.$inferSelect
 export type Library = typeof libraries.$inferSelect
 export type Drive = typeof drives.$inferSelect
 export type SyncJob = typeof syncJobs.$inferSelect
+export type Album = typeof albums.$inferSelect
+export type Share = typeof shares.$inferSelect
 export type DriveSyncState = typeof driveSyncStates.$inferSelect
