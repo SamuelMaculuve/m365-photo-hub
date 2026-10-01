@@ -7,6 +7,9 @@ import { pickLocale, translate, type Locale } from './lib/i18n'
 import { csrfMiddleware, endSession, sessionMiddleware } from './lib/session'
 import { authRoutes } from './routes/auth'
 import { meRoutes } from './routes/me'
+import { adminGraphRoutes } from './routes/admin/graph'
+import { adminLibraryRoutes } from './routes/admin/libraries'
+import { adminSyncRoutes } from './routes/admin/sync'
 
 /** API completa (rotas /api, /auth e /sanctum), servida por uma Netlify Function ou pelo servidor de desenvolvimento. */
 export function createApp() {
@@ -30,6 +33,9 @@ export function createApp() {
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/', authRoutes)
   app.route('/api', meRoutes)
+  app.route('/api/admin', adminLibraryRoutes)
+  app.route('/api/admin', adminGraphRoutes)
+  app.route('/api/admin', adminSyncRoutes)
 
   app.notFound((c) => c.json({ error: { code: 'not_found', message: translate(c.get('locale') ?? 'pt', 'errors.not_found') } }, 404))
 

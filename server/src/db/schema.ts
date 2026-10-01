@@ -347,6 +347,13 @@ export const shareMedia = pgTable(
 // Sincronização, auditoria e definições
 // ---------------------------------------------------------------------------
 
+export interface SyncJobState {
+  pending?: { item: Record<string, unknown>; type: 'image' | 'video' }[]
+  changedFolders?: string[]
+  deletedFolders?: string[]
+  fullScan?: boolean
+}
+
 export const syncJobs = pgTable(
   'sync_jobs',
   {
@@ -362,6 +369,9 @@ export const syncJobs = pgTable(
     removed: bigint({ mode: 'number' }).notNull().default(0),
     errors: bigint({ mode: 'number' }).notNull().default(0),
     triggeredBy: integer('triggered_by').references(() => users.id, { onDelete: 'set null' }),
+    // Estado entre invocações (a sincronização corre por partes): ficheiros à espera da pasta-mãe e pastas alteradas.
+    state: jsonb().$type<SyncJobState>(),
+    attempts: integer().notNull().default(0),
     startedAt: ts('started_at'),
     finishedAt: ts('finished_at'),
     ...timestamps,
@@ -417,3 +427,5 @@ export type User = typeof users.$inferSelect
 export type Media = typeof media.$inferSelect
 export type Library = typeof libraries.$inferSelect
 export type Drive = typeof drives.$inferSelect
+export type SyncJob = typeof syncJobs.$inferSelect
+export type DriveSyncState = typeof driveSyncStates.$inferSelect

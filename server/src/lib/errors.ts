@@ -48,6 +48,7 @@ export class GraphApiError extends AppError {
 
   get isNotFound() { return this.graphStatus === 404 || this.graphStatus === 410 }
   get isForbidden() { return this.graphStatus === 403 }
+  get isResyncRequired() { return this.graphStatus === 410 || ['resyncRequired', 'syncStateNotFound'].includes(this.graphCode ?? '') }
 }
 
 export class GraphThrottleError extends GraphApiError {
