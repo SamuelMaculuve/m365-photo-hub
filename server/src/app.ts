@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { config } from './config'
 import { getDb } from './db/client'
@@ -22,6 +23,20 @@ import { adminMiscRoutes } from './routes/admin/misc'
 export function createApp() {
   const app = new Hono<AppEnv>()
 
+  // Antes do middleware da base: responde mesmo que a base esteja em baixo e diz porquê
+  // (só o tipo de erro conhecido — nunca mensagens internas, hosts ou credenciais).
+  app.get('/api/health', async (c) => {
+    try {
+      const db = await getDb()
+      await db.execute(sql`select 1`)
+      return c.json({ status: 'ok', database: 'ok', app_key: Boolean(config.appKey) })
+    } catch (e) {
+      console.error('health: database unavailable', e)
+      const reason = String((e as Error)?.message ?? '').includes('Netlify Database não está disponível') ? 'not_created' : ((e as Error)?.name ?? 'error')
+      return c.json({ status: 'error', database: 'unavailable', reason, app_key: Boolean(config.appKey) }, 503)
+    }
+  })
+
   app.use('*', async (c, next) => {
     c.set('db', await getDb())
     c.set('ip', clientIp(c))
@@ -37,7 +52,6 @@ export function createApp() {
   })
   app.use('*', csrfMiddleware)
 
-  app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/', authRoutes)
   app.route('/api', meRoutes)
   app.route('/api', photoRoutes)
