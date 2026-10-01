@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
+import { DemoDatabase, netlifySnapshotStore } from './demo/runtime'
 import * as schema from './schema'
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>
@@ -7,14 +8,28 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>
 /** Calculado só quando é preciso (no bundle das funções não há migrações em tempo de execução). */
 export const migrationsDir = () => fileURLToPath(new URL('../../drizzle', import.meta.url))
 
+/**
+ * Modos da base de dados:
+ * - "postgres": DATABASE_URL definida → esse Postgres, normalmente (o caminho real);
+ * - "demo": dentro do Netlify sem DATABASE_URL → PGlite em memória com cópia no Netlify Blobs;
+ * - "local": desenvolvimento e testes → PGlite em ficheiro (PGLITE_DIR) ou em memória.
+ */
+export type DbMode = 'postgres' | 'demo' | 'local'
+
+export function dbMode(): DbMode {
+  if (process.env.DATABASE_URL) return 'postgres'
+  if (process.env.NETLIFY_FUNCTION === '1') return 'demo'
+  return 'local'
+}
+
+export const inMemoryDb = () => dbMode() === 'demo'
+
 let current: Db | null = null
 let pending: Promise<Db> | null = null
+let demo: DemoDatabase | null = null
 
-/**
- * Base de dados da aplicação:
- * - produção (Netlify): Netlify Database (Postgres gerido), ligado com @netlify/database;
- * - desenvolvimento e testes: PGlite (Postgres embutido), em ficheiro (PGLITE_DIR) ou em memória.
- */
+const demoDb = () => (demo ??= new DemoDatabase(netlifySnapshotStore))
+
 export function getDb(): Promise<Db> {
   if (current) return Promise.resolve(current)
   pending ??= connect().then(
@@ -27,6 +42,17 @@ export function getDb(): Promise<Db> {
   return pending
 }
 
+/** Antes de cada pedido: no modo demo, recarrega a base se outra instância gravou. */
+export async function ensureDatabase(): Promise<Db> {
+  if (dbMode() === 'demo') await demoDb().sync()
+  return getDb()
+}
+
+/** Depois de um pedido (antes de responder): no modo demo, grava a cópia se houve escritas. */
+export async function persistDatabase(): Promise<void> {
+  if (dbMode() === 'demo') await demoDb().persist()
+}
+
 /** Só para testes e para o servidor de desenvolvimento. */
 export function setDb(db: Db | null): void {
   current = db
@@ -34,31 +60,20 @@ export function setDb(db: Db | null): void {
 }
 
 async function connect(): Promise<Db> {
-  const netlify = await netlifyDatabase()
-  if (netlify) return netlify
-  // Nas Netlify Functions o disco é temporário: sem a base do Netlify os dados perder-se-iam.
-  if (process.env.REQUIRE_DATABASE_URL === '1') {
-    throw new Error('Netlify Database não está disponível neste site. Crie-a com "netlify database init" e faça novo deploy.')
+  switch (dbMode()) {
+    case 'postgres': {
+      const { Pool } = await import('pg')
+      const { drizzle } = await import('drizzle-orm/node-postgres')
+      const url = process.env.DATABASE_URL!
+      const ssl = /sslmode=(require|verify)/.test(url) || !/localhost|127\.0\.0\.1/.test(url) ? { rejectUnauthorized: false } : undefined
+      return drizzle({ client: new Pool({ connectionString: url, max: 3, ssl }), schema }) as unknown as Db
+    }
+    case 'demo':
+      await demoDb().sync()
+      return demoDb().db
+    default:
+      return createPgliteDb(process.env.PGLITE_DIR)
   }
-  return createPgliteDb(process.env.PGLITE_DIR)
-}
-
-/** Ligação fornecida pelo Netlify (pg em servidor ou Neon serverless), ou null fora do Netlify. */
-async function netlifyDatabase(): Promise<Db | null> {
-  const { getDatabase, MissingDatabaseConnectionError } = await import('@netlify/database')
-  let connection
-  try {
-    connection = getDatabase()
-  } catch (e) {
-    if (e instanceof MissingDatabaseConnectionError) return null
-    throw e
-  }
-  if (connection.driver === 'server') {
-    const { drizzle } = await import('drizzle-orm/node-postgres')
-    return drizzle({ client: connection.pool, schema }) as unknown as Db
-  }
-  const { drizzle } = await import('drizzle-orm/neon-serverless')
-  return drizzle({ client: connection.pool, schema }) as unknown as Db
 }
 
 /** PGlite com as migrações aplicadas. Sem `dir` fica em memória. */

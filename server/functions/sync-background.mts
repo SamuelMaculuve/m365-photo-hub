@@ -1,6 +1,6 @@
 import '../src/netlify-env'
 import type { Context } from '@netlify/functions'
-import { getDb } from '../src/db/client'
+import { ensureDatabase, persistDatabase } from '../src/db/client'
 import { safeEqual } from '../src/lib/crypto'
 import { SyncManager } from '../src/services/sync/manager'
 import { syncSecret } from '../src/services/sync/trigger'
@@ -13,12 +13,15 @@ import { config as appConfig } from '../src/config'
  */
 export default async (req: Request, _context: Context) => {
   if (!safeEqual(req.headers.get('x-sync-secret') ?? '', syncSecret())) return new Response(null, { status: 403 })
-  const manager = new SyncManager(await getDb())
+  const manager = new SyncManager(await ensureDatabase())
   const deadline = Date.now() + 13 * 60_000
   let more = true
   while (Date.now() < deadline) {
     const started = Date.now()
+    // Modo demonstração: recarregar antes de cada fatia (outra instância pode ter gravado) e gravar depois.
+    await ensureDatabase()
     more = await manager.work(Math.min(deadline, started + 60_000))
+    await persistDatabase()
     if (!more) break
     // Os jobs restantes estão bloqueados por outra invocação: esperar em vez de consultar sem parar.
     if (Date.now() - started < 1000) await new Promise((r) => setTimeout(r, 5000))

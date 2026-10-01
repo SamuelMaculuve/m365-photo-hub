@@ -9,7 +9,7 @@ Browser ──► Netlify (CDN) ── frontend/dist (React, estático)
                ├── de hora a hora               ──► Scheduled Function "sync-scheduled"
                └── sincronizações longas        ──► Background Function "sync-background" (até 15 min)
                                                       │
-                     Netlify Database (Postgres) ◄────┤
+                     Netlify Blobs (cópia da base) ◄──┤
                      Netlify Blobs (miniaturas) ◄─────┘──► Microsoft Graph ──► OneDrive / SharePoint
 ```
 
@@ -20,7 +20,7 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 | Laravel | Netlify |
 |---|---|
-| MySQL | Postgres: **Netlify Database** em produção, **PGlite** (Postgres embutido) em desenvolvimento e testes |
+| MySQL | Postgres. **Modo demonstração** (sem `DATABASE_URL`): PGlite em memória na função, com a base guardada no Netlify Blobs. **Modo real**: o Postgres de `DATABASE_URL`. PGlite em desenvolvimento e testes |
 | Redis (sessões, cache, filas, locks) | Tabelas `sessions` e `cache_entries` no Postgres |
 | Workers + cron | Função agendada (de hora a hora, só acorda a base quando há sincronização em atraso) e função em segundo plano |
 | Sincronização num job longo | Sincronização **por fatias**: cada invocação processa páginas do delta até ao limite de tempo, guarda o checkpoint e o estado, e a seguinte continua |
@@ -32,13 +32,21 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 1. Ligue o repositório no Netlify (**Add new site → Import an existing project**) e escolha o ramo
    `feature/netlify-backend`. O `netlify.toml` já define o build, a pasta publicada e as funções.
-2. Crie o **Netlify Database** do site (Postgres gerido pelo Netlify, incluído no plano Free): no painel
-   do site, ou com a CLI na pasta do repositório ligada ao site (`npx netlify link`, depois
-   `npx netlify database init`). Não é preciso configurar nenhuma variável: a aplicação liga-se com
-   o pacote `@netlify/database`.
-3. As migrações estão em `netlify/database/migrations/` e o Netlify aplica-as **automaticamente antes de
-   publicar** cada deploy (se uma falhar, o deploy não é publicado). Os deploy previews têm uma cópia
-   isolada da base.
+2. Escolha a base de dados:
+   - **Modo demonstração (omissão, plano Free, sem serviços externos):** não defina `DATABASE_URL`.
+     No primeiro pedido, a função cria um Postgres em memória (PGlite) com o esquema e dados de exemplo e
+     publica uma cópia comprimida (~5 MB) no Netlify Blobs (store `demo-db`). Antes de cada pedido cada
+     instância verifica a versão da cópia e recarrega-a se outra instância gravou; depois de cada pedido que
+     **alterou dados**, grava uma versão nova antes de responder.
+   - **Modo real:** defina `DATABASE_URL` com um Postgres (ex.: `postgresql://…?sslmode=require`). As
+     migrações aplicam-se no build (`npm run db:migrate`).
+
+   **Limites do modo demonstração:** se duas pessoas gravarem ao mesmo tempo em instâncias diferentes, a
+   última gravação ganha (a outra alteração perde-se). Cada pedido que altera dados envia a cópia inteira
+   para o Blobs (cerca de 1 s a mais). Serve para demonstrações com poucas pessoas, não para produção.
+
+   **Repor a demonstração:** apague a entrada da store `demo-db` em **Blobs** no painel do Netlify; o pedido
+   seguinte cria a base de raiz com os dados de exemplo. Alterar o esquema também começa uma base nova.
 
 ## 2. Variáveis de ambiente
 
@@ -54,6 +62,8 @@ Em **Site configuration → Environment variables**:
 | `MICROSOFT_BOOTSTRAP_SUPER_ADMINS` | Emails que recebem `super_admin` no primeiro login |
 | `MICROSOFT_ENABLE_WRITES` | `true` só se quiser uploads e envio para a Reciclagem |
 | `SYNC_INTERVAL_MINUTES` | Opcional (omissão 360 = 6 h; valores baixos gastam mais créditos) |
+| `DATABASE_URL` | Opcional: Postgres real. Sem ela, o site corre em modo demonstração |
+| `DEMO_LOGIN` | `true` para entrar só com um email, sem Microsoft (**só no modo demonstração**; a primeira conta fica `super_admin`). Nunca o active com dados reais |
 
 No Entra ID, acrescente o mesmo `MICROSOFT_REDIRECT_URI` em **Authentication → Redirect URIs** (plataforma Web).
 
@@ -91,9 +101,8 @@ cd server && npm test && npm run typecheck
   Microsoft 365 (miniaturas ficam em cache no Netlify Blobs; vídeos e originais são um redirect).
 - **Bibliotecas muito grandes**: a primeira sincronização demora mais do que num servidor, porque avança
   por fatias. Fica retomável: um erro ou um timeout não perde o progresso.
-- **Plano Free (300 créditos/mês, limite rígido)**: a base gasta 10 créditos por hora acordada (adormece
-  após 5 min sem uso; no máximo 48 h/mês no Free), as funções 10 créditos por GB-hora, os pedidos
-  2 créditos por 10 000, o tráfego 20 por GB e cada deploy em produção 15. Chega para **uso leve**
-  (equipa pequena, acessos ocasionais). Com uso diário por várias pessoas, considere o plano Personal.
-  Acompanhe o consumo em **Usage & billing** no painel do Netlify.
+- **Plano Free (300 créditos/mês, limite rígido)**: as funções gastam 10 créditos por GB-hora, os pedidos
+  2 créditos por 10 000, o tráfego 20 por GB e cada deploy em produção 15. No modo demonstração a base
+  vive na função (sem custo de base de dados), mas cada instância nova demora ~1 s a arrancá-la e cada
+  gravação envia ~5 MB para o Blobs. Acompanhe o consumo em **Usage & billing** no painel do Netlify.
 - **Poupar créditos**: evite deploys desnecessários em produção e não baixe `SYNC_INTERVAL_MINUTES`.

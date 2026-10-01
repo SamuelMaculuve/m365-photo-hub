@@ -9,6 +9,7 @@ import { GraphApiError, GraphThrottleError, mediaUnavailable } from '../lib/erro
 import { GraphAuth } from '../microsoft/auth'
 import { OneDrive } from '../microsoft/onedrive'
 import { DriveAuth } from './drive-auth'
+import { demoImage } from './demo-image'
 
 /**
  * Obtém conteúdo (miniaturas, URLs de download) a partir do Microsoft 365.
@@ -26,12 +27,17 @@ export class MediaContent {
 
   /** Miniatura em cache (Netlify Blobs) ou pedida ao Graph. A chave inclui o eTag: um ficheiro alterado gera outra. */
   async thumbnail(m: s.Media, size: string, viewer: s.User | null): Promise<{ data: ArrayBuffer; mime: string }> {
+    const drive = await this.drive(m)
+    // Fotografias de demonstração: imagem gerada pela aplicação (não existe ficheiro no Microsoft 365).
+    if (drive.driveType === 'demo') {
+      const svg = new TextEncoder().encode(demoImage(m, size))
+      return { data: svg.buffer.slice(svg.byteOffset, svg.byteOffset + svg.byteLength) as ArrayBuffer, mime: 'image/svg+xml' }
+    }
     const key = `${m.id}/${size}/${sha256(m.etag ?? String(m.sourceModifiedAt?.getTime() ?? '')).slice(0, 12)}`
     const store = thumbnailStore()
     const cached = await store.get(key).catch(() => null)
     if (cached) return cached
 
-    const drive = await this.drive(m)
     const result = await this.guard(m, async () => {
       const t = await this.oneDrive.thumbnail(drive.driveId, m.itemId, config.thumbnailSizes[size], new DriveAuth(this.db).forContent(drive, viewer))
       return { data: t.body, mime: t.mime }
@@ -43,6 +49,7 @@ export class MediaContent {
   /** URL temporário para o original (vídeo em streaming ou download). */
   async downloadUrl(m: s.Media, viewer: s.User | null): Promise<string> {
     const drive = await this.drive(m)
+    if (drive.driveType === 'demo') return `/api/demo-media/${m.id}`
     const auth = new DriveAuth(this.db).forContent(drive, viewer)
     return new Cache(this.db).remember(`dl:${m.id}:${m.etag}:${auth.identity()}`, config.downloadUrlTtl, () =>
       this.guard(m, () => this.oneDrive.downloadUrl(drive.driveId, m.itemId, auth)),
@@ -55,6 +62,7 @@ export class MediaContent {
    */
   async moveToRecycleBin(m: s.Media, user: s.User): Promise<void> {
     const drive = await this.drive(m)
+    if (drive.driveType === 'demo') return
     await this.oneDrive.moveToRecycleBin(drive.driveId, m.itemId, new GraphAuth(this.db).forUser(user))
   }
 

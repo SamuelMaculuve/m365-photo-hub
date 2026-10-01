@@ -1,7 +1,9 @@
-# m365-photo-hub — frontend estático (React) + backend em Netlify Functions + Netlify Database (Postgres) + Blobs.
+# m365-photo-hub — frontend estático (React) + backend em Netlify Functions.
+# Base de dados: com DATABASE_URL, esse Postgres; sem ela, modo demonstração (PGlite em memória,
+# com a base guardada no Netlify Blobs). Ver docs/NETLIFY.md.
 [build]
-  # As migrações (netlify/database/migrations) são aplicadas pelo Netlify Database antes de publicar.
-  command = "npm ci --prefix server && npm ci --prefix frontend && npm run build --prefix frontend"
+  # db:migrate só faz alguma coisa com DATABASE_URL (Postgres real); no modo demonstração não há nada a migrar.
+  command = "npm ci --prefix server && npm ci --prefix frontend && npm run db:migrate --prefix server && npm run build --prefix frontend"
   publish = "frontend/dist"
 
 [build.environment]
@@ -10,6 +12,9 @@
 [functions]
   directory = "server/functions"
   node_bundler = "esbuild"
+  # O PGlite carrega pglite.wasm/pglite.data ao lado do seu código: tem de ir como pacote inteiro, não no bundle.
+  # O pg tem um require opcional (pg-native) que o esbuild não resolve.
+  external_node_modules = ["@electric-sql/pglite", "pg"]
 
 # SPA: todas as rotas do React caem no index.html (as funções têm prioridade em /api, /auth e /sanctum).
 [[redirects]]

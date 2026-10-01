@@ -1,9 +1,0 @@
-{
-  "name": "m365-photo-hub",
-  "private": true,
-  "description": "Raiz do site no Netlify. O frontend está em frontend/ e o backend em server/. A dependência abaixo indica ao Netlify que o site usa o Netlify Database (provisionado automaticamente no deploy; migrações em netlify/database/migrations).",
-  "engines": { "node": ">=22" },
-  "dependencies": {
-    "@netlify/database": "^2.0.1"
-  }
-}

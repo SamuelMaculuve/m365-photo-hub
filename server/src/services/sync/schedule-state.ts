@@ -1,7 +1,7 @@
 /**
  * Marcador da próxima sincronização, guardado no Netlify Blobs (não na base de dados).
  * A função agendada lê-o primeiro: se ainda não é hora e não há trabalho pendente, termina
- * sem acordar o Netlify Database — no plano gratuito cada hora com a base acordada gasta créditos.
+ * sem carregar a base (no modo demonstração, arrancar o PGlite e descarregar a cópia do Blobs).
  */
 export interface ScheduleState {
   /** Epoch ms a partir do qual há sincronizações a agendar. */

@@ -9,5 +9,4 @@
 # Local Netlify folder
 .netlify
 
-# Dependências da raiz (só @netlify/database)
 /node_modules/

@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { z } from 'zod'
 import { config } from '../config'
+import { dbMode } from '../db/client'
 import type { Db } from '../db/client'
 import { users } from '../db/schema'
 import { audit } from '../lib/audit'
@@ -17,7 +18,11 @@ import { GraphClient } from '../microsoft/graph'
 
 const OAUTH_COOKIE = 'm365_oauth'
 
-const devLoginEnabled = () => config.isLocal && config.devLogin
+/**
+ * Login sem Microsoft: em desenvolvimento (APP_ENV=local + AUTH_DEV_LOGIN=true) ou numa
+ * demonstração no Netlify (sem DATABASE_URL + DEMO_LOGIN=true). Nunca com uma base real em produção.
+ */
+const devLoginEnabled = () => (config.isLocal && config.devLogin) || (dbMode() === 'demo' && process.env.DEMO_LOGIN === 'true')
 
 /** Login com Microsoft Entra ID (Authorization Code + PKCE), executado inteiramente no servidor. */
 export const authRoutes = new Hono<AppEnv>()
@@ -117,7 +122,8 @@ export const authRoutes = new Hono<AppEnv>()
     const address = email.toLowerCase()
     let [user] = await db.select().from(users).where(and(eq(users.email, address), isNull(users.deletedAt)))
     if (!user) {
-      const [{ n }] = await db.select({ n: count() }).from(users)
+      // A primeira conta activa com papel de super_admin fica com ele (os dados de exemplo trazem uma conta inactiva).
+      const [{ n }] = await db.select({ n: count() }).from(users).where(and(eq(users.isActive, true), eq(users.role, 'super_admin')))
       const name = address.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase())
       ;[user] = await db.insert(users).values({ email: address, name, role: n === 0 ? 'super_admin' : 'viewer', roleSource: 'local', locale: 'pt' }).returning()
     }

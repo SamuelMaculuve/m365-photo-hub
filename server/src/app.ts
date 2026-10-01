@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { config } from './config'
-import { getDb } from './db/client'
+import { dbMode, ensureDatabase, persistDatabase } from './db/client'
 import { clientIp, type AppEnv } from './lib/context'
 import { AppError, ValidationError } from './lib/errors'
 import { pickLocale, translate, type Locale } from './lib/i18n'
@@ -27,21 +27,29 @@ export function createApp() {
   // (só o tipo de erro conhecido — nunca mensagens internas, hosts ou credenciais).
   app.get('/api/health', async (c) => {
     try {
-      const db = await getDb()
+      const db = await ensureDatabase()
       await db.execute(sql`select 1`)
-      return c.json({ status: 'ok', database: 'ok', app_key: Boolean(config.appKey) })
+      return c.json({ status: 'ok', database: 'ok', mode: dbMode(), app_key: Boolean(config.appKey) })
     } catch (e) {
       console.error('health: database unavailable', e)
-      const reason = String((e as Error)?.message ?? '').includes('Netlify Database não está disponível') ? 'not_created' : ((e as Error)?.name ?? 'error')
-      return c.json({ status: 'error', database: 'unavailable', reason, app_key: Boolean(config.appKey) }, 503)
+      return c.json({ status: 'error', database: 'unavailable', mode: dbMode(), reason: (e as Error)?.name ?? 'error', app_key: Boolean(config.appKey) }, 503)
     }
   })
 
   app.use('*', async (c, next) => {
-    c.set('db', await getDb())
+    // Modo demonstração: recarregar a base se outra instância gravou uma versão mais recente.
+    c.set('db', await ensureDatabase())
     c.set('ip', clientIp(c))
     c.set('locale', pickLocale(c.req.header('accept-language')))
     await next()
+    // ...e gravá-la antes de responder se o pedido escreveu (o pedido seguinte, noutra instância, já a vê).
+    // Por escritas reais e não pelo método: o regresso do login (GET) também cria utilizador e sessão.
+    try {
+      await persistDatabase()
+    } catch (e) {
+      console.error('demo database persist failed', e)
+      c.res = c.json({ error: { code: 'internal_error', message: translate(c.get('locale'), 'errors.internal_error') } }, 503)
+    }
     securityHeaders(c.req.path, c.res.headers, c.req.url.startsWith('https://'))
   })
   app.use('*', sessionMiddleware)

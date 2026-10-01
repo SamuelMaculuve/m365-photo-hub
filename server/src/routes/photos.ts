@@ -9,6 +9,7 @@ import { notFound } from '../lib/errors'
 import { parse } from '../lib/validate'
 import { Access } from '../services/access'
 import { MediaContent } from '../services/content'
+import { demoImage } from '../services/demo-image'
 import { MediaService } from '../services/media'
 import { mediaDetailResource, mediaResource, SIZES } from '../services/media-resource'
 import { Timeline, type Page } from '../services/timeline'
@@ -119,6 +120,17 @@ export const photoRoutes = new Hono<AppEnv>()
     const { media } = services(c)
     await media.deleteFromSource(user, await media.findVisible(user, c.req.param('id')))
     return c.json({ data: { deleted: true } })
+  })
+  /**
+   * Imagem de uma fotografia de demonstração (só do drive "demo": não há dados reais).
+   * Pública para servir também o download e as partilhas.
+   */
+  .get('/demo-media/:id{[0-9]+}', async (c) => {
+    const db = c.get('db')
+    const [row] = await db.select({ m: s.media, driveType: s.drives.driveType }).from(s.media)
+      .innerJoin(s.drives, eq(s.drives.id, s.media.driveId)).where(eq(s.media.id, Number(c.req.param('id'))))
+    if (!row || row.driveType !== 'demo') throw notFound()
+    return c.body(demoImage(row.m, c.req.query('size') ?? 'xlarge'), 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' })
   })
   .get('/libraries', async (c) => {
     const user = requireUser(c)
