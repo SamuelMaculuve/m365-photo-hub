@@ -35,6 +35,9 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 2. Active o **Netlify DB**: no painel do site (**Extensions → Netlify DB**) ou com
    `npx netlify db init`. Isto cria a variável `NETLIFY_DATABASE_URL`.
    O build aplica as migrações (`npm run db:migrate`) e falha se a base não estiver configurada.
+3. **Reclame a base** (botão *Claim database* no painel do Netlify DB). As bases criadas pelo Netlify
+   são temporárias até serem associadas a uma conta Neon (gratuita); sem isso são apagadas ao fim de
+   poucos dias, com todos os dados. Confirme os limites do nível gratuito no painel.
 
 ## 2. Variáveis de ambiente
 
