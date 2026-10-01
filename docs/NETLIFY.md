@@ -6,10 +6,10 @@ Neste ramo (`feature/netlify-backend`) a aplicação inteira corre no Netlify:
 Browser ──► Netlify (CDN) ── frontend/dist (React, estático)
                │
                ├── /api/*, /auth/*, /sanctum/*  ──► Netlify Function "api" (server/, TypeScript + Hono)
-               ├── a cada 5 min                 ──► Scheduled Function "sync-scheduled"
+               ├── de hora a hora               ──► Scheduled Function "sync-scheduled"
                └── sincronizações longas        ──► Background Function "sync-background" (até 15 min)
                                                       │
-                     Netlify DB (Postgres/Neon) ◄─────┤
+                     Netlify Database (Postgres) ◄────┤
                      Netlify Blobs (miniaturas) ◄─────┘──► Microsoft Graph ──► OneDrive / SharePoint
 ```
 
@@ -20,9 +20,9 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 | Laravel | Netlify |
 |---|---|
-| MySQL | Postgres: **Netlify DB** em produção, **PGlite** (Postgres embutido) em desenvolvimento e testes |
+| MySQL | Postgres: **Netlify Database** em produção, **PGlite** (Postgres embutido) em desenvolvimento e testes |
 | Redis (sessões, cache, filas, locks) | Tabelas `sessions` e `cache_entries` no Postgres |
-| Workers + cron | Função agendada (*/5) e função em segundo plano |
+| Workers + cron | Função agendada (de hora a hora, só acorda a base quando há sincronização em atraso) e função em segundo plano |
 | Sincronização num job longo | Sincronização **por fatias**: cada invocação processa páginas do delta até ao limite de tempo, guarda o checkpoint e o estado, e a seguinte continua |
 | Miniaturas em disco | Netlify Blobs (store `thumbnails`) |
 | Rostos, IA e EXIF a partir do ficheiro (Python) | **Não disponíveis.** `features.faces` e `features.semantic_search` são sempre `false`. A data e o GPS vêm dos metadados do Microsoft 365 |
@@ -32,12 +32,13 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 1. Ligue o repositório no Netlify (**Add new site → Import an existing project**) e escolha o ramo
    `feature/netlify-backend`. O `netlify.toml` já define o build, a pasta publicada e as funções.
-2. Active o **Netlify DB**: no painel do site (**Extensions → Netlify DB**) ou com
-   `npx netlify db init`. Isto cria a variável `NETLIFY_DATABASE_URL`.
-   O build aplica as migrações (`npm run db:migrate`) e falha se a base não estiver configurada.
-3. **Reclame a base** (botão *Claim database* no painel do Netlify DB). As bases criadas pelo Netlify
-   são temporárias até serem associadas a uma conta Neon (gratuita); sem isso são apagadas ao fim de
-   poucos dias, com todos os dados. Confirme os limites do nível gratuito no painel.
+2. Crie o **Netlify Database** do site (Postgres gerido pelo Netlify, incluído no plano Free): no painel
+   do site, ou com a CLI na pasta do repositório ligada ao site (`npx netlify link`, depois
+   `npx netlify database init`). Não é preciso configurar nenhuma variável: a aplicação liga-se com
+   o pacote `@netlify/database`.
+3. As migrações estão em `netlify/database/migrations/` e o Netlify aplica-as **automaticamente antes de
+   publicar** cada deploy (se uma falhar, o deploy não é publicado). Os deploy previews têm uma cópia
+   isolada da base.
 
 ## 2. Variáveis de ambiente
 
@@ -52,7 +53,7 @@ Em **Site configuration → Environment variables**:
 | `MICROSOFT_REDIRECT_URI` | `https://<o-seu-site>.netlify.app/auth/microsoft/callback` (ou o domínio próprio) |
 | `MICROSOFT_BOOTSTRAP_SUPER_ADMINS` | Emails que recebem `super_admin` no primeiro login |
 | `MICROSOFT_ENABLE_WRITES` | `true` só se quiser uploads e envio para a Reciclagem |
-| `SYNC_INTERVAL_MINUTES` | Opcional (omissão 10) |
+| `SYNC_INTERVAL_MINUTES` | Opcional (omissão 360 = 6 h; valores baixos gastam mais créditos) |
 
 No Entra ID, acrescente o mesmo `MICROSOFT_REDIRECT_URI` em **Authentication → Redirect URIs** (plataforma Web).
 
@@ -62,14 +63,15 @@ No Entra ID, acrescente o mesmo `MICROSOFT_REDIRECT_URI` em **Authentication →
 2. Em **Administração → Bibliotecas**, crie uma biblioteca e inicie a sincronização.
 3. A sincronização inicial avança em segundo plano; acompanhe-a em **Administração → Sincronização**.
 
-As funções agendadas só correm em deploys publicados (não em deploy previews). Se o seu plano não
-incluir Background Functions, a função agendada continua o trabalho a cada 5 minutos, mais devagar.
+As funções agendadas só correm em deploys publicados (não em deploy previews). A sincronização
+automática acontece de 6 em 6 horas (`SYNC_INTERVAL_MINUTES`); um administrador pode pedi-la a qualquer
+momento em **Administração → Sincronização**.
 
 ## Desenvolvimento local
 
 ```bash
 cd server && npm install
-APP_KEY=$(openssl rand -base64 32) AUTH_DEV_LOGIN=true npm run dev   # API em http://127.0.0.1:8000, PGlite em server/.data
+APP_KEY=$(openssl rand -base64 32) AUTH_DEV_LOGIN=true npm run dev   # API em http://127.0.0.1:8000, PGlite em server/.data/pglite
 cd ../frontend && npm run dev                                          # http://localhost:5173 (proxy para a porta 8000)
 ```
 
@@ -89,4 +91,9 @@ cd server && npm test && npm run typecheck
   Microsoft 365 (miniaturas ficam em cache no Netlify Blobs; vídeos e originais são um redirect).
 - **Bibliotecas muito grandes**: a primeira sincronização demora mais do que num servidor, porque avança
   por fatias. Fica retomável: um erro ou um timeout não perde o progresso.
-- **Custos**: invocações de funções, leituras de Blobs e a base de dados contam para o plano do Netlify.
+- **Plano Free (300 créditos/mês, limite rígido)**: a base gasta 10 créditos por hora acordada (adormece
+  após 5 min sem uso; no máximo 48 h/mês no Free), as funções 10 créditos por GB-hora, os pedidos
+  2 créditos por 10 000, o tráfego 20 por GB e cada deploy em produção 15. Chega para **uso leve**
+  (equipa pequena, acessos ocasionais). Com uso diário por várias pessoas, considere o plano Personal.
+  Acompanhe o consumo em **Usage & billing** no painel do Netlify.
+- **Poupar créditos**: evite deploys desnecessários em produção e não baixe `SYNC_INTERVAL_MINUTES`.

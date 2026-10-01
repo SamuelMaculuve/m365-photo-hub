@@ -12,7 +12,7 @@ let pending: Promise<Db> | null = null
 
 /**
  * Base de dados da aplicação:
- * - produção (Netlify): Postgres serverless da Netlify DB / Neon (NETLIFY_DATABASE_URL ou DATABASE_URL);
+ * - produção (Netlify): Netlify Database (Postgres gerido), ligado com @netlify/database;
  * - desenvolvimento e testes: PGlite (Postgres embutido), em ficheiro (PGLITE_DIR) ou em memória.
  */
 export function getDb(): Promise<Db> {
@@ -34,17 +34,31 @@ export function setDb(db: Db | null): void {
 }
 
 async function connect(): Promise<Db> {
-  const url = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL
-  if (url) {
-    const { Pool } = await import('@neondatabase/serverless')
-    const { drizzle } = await import('drizzle-orm/neon-serverless')
-    return drizzle({ client: new Pool({ connectionString: url }), schema }) as unknown as Db
-  }
-  // Nas Netlify Functions o disco é temporário: sem Postgres configurado os dados perder-se-iam.
+  const netlify = await netlifyDatabase()
+  if (netlify) return netlify
+  // Nas Netlify Functions o disco é temporário: sem a base do Netlify os dados perder-se-iam.
   if (process.env.REQUIRE_DATABASE_URL === '1') {
-    throw new Error('NETLIFY_DATABASE_URL (ou DATABASE_URL) não está definido. Active o Netlify DB ou indique um Postgres.')
+    throw new Error('Netlify Database não está disponível neste site. Crie-a com "netlify database init" e faça novo deploy.')
   }
   return createPgliteDb(process.env.PGLITE_DIR)
+}
+
+/** Ligação fornecida pelo Netlify (pg em servidor ou Neon serverless), ou null fora do Netlify. */
+async function netlifyDatabase(): Promise<Db | null> {
+  const { getDatabase, MissingDatabaseConnectionError } = await import('@netlify/database')
+  let connection
+  try {
+    connection = getDatabase()
+  } catch (e) {
+    if (e instanceof MissingDatabaseConnectionError) return null
+    throw e
+  }
+  if (connection.driver === 'server') {
+    const { drizzle } = await import('drizzle-orm/node-postgres')
+    return drizzle({ client: connection.pool, schema }) as unknown as Db
+  }
+  const { drizzle } = await import('drizzle-orm/neon-serverless')
+  return drizzle({ client: connection.pool, schema }) as unknown as Db
 }
 
 /** PGlite com as migrações aplicadas. Sem `dir` fica em memória. */

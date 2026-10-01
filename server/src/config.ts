@@ -63,7 +63,8 @@ export const config = {
   downloadUrlTtl: 600,
 
   sync: {
-    get intervalMinutes() { return int('SYNC_INTERVAL_MINUTES', 10) },
+    /** Por omissão 6 h: cada sincronização acorda a base de dados (créditos no plano gratuito). */
+    get intervalMinutes() { return int('SYNC_INTERVAL_MINUTES', 360) },
     /** Tempo máximo de trabalho por invocação; o resto continua na seguinte a partir do checkpoint. */
     get sliceSeconds() { return int('SYNC_SLICE_SECONDS', 20) },
   },

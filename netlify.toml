@@ -1,6 +1,7 @@
-# m365-photo-hub — frontend estático (React) + backend em Netlify Functions + Netlify DB (Postgres).
+# m365-photo-hub — frontend estático (React) + backend em Netlify Functions + Netlify Database (Postgres) + Blobs.
 [build]
-  command = "npm ci --prefix server && npm ci --prefix frontend && npm run db:migrate --prefix server && npm run build --prefix frontend"
+  # As migrações (netlify/database/migrations) são aplicadas pelo Netlify Database antes de publicar.
+  command = "npm ci --prefix server && npm ci --prefix frontend && npm run build --prefix frontend"
   publish = "frontend/dist"
 
 [build.environment]

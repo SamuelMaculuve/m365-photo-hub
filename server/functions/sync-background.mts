@@ -4,6 +4,8 @@ import { getDb } from '../src/db/client'
 import { safeEqual } from '../src/lib/crypto'
 import { SyncManager } from '../src/services/sync/manager'
 import { syncSecret } from '../src/services/sync/trigger'
+import { writeScheduleState } from '../src/services/sync/schedule-state'
+import { config as appConfig } from '../src/config'
 
 /**
  * Background Function (sufixo "-background": o Netlify responde 202 e deixa-a correr até 15 min).
@@ -13,11 +15,15 @@ export default async (req: Request, _context: Context) => {
   if (!safeEqual(req.headers.get('x-sync-secret') ?? '', syncSecret())) return new Response(null, { status: 403 })
   const manager = new SyncManager(await getDb())
   const deadline = Date.now() + 13 * 60_000
+  let more = true
   while (Date.now() < deadline) {
     const started = Date.now()
-    if (!(await manager.work(Math.min(deadline, started + 60_000)))) break
+    more = await manager.work(Math.min(deadline, started + 60_000))
+    if (!more) break
     // Os jobs restantes estão bloqueados por outra invocação: esperar em vez de consultar sem parar.
     if (Date.now() - started < 1000) await new Promise((r) => setTimeout(r, 5000))
   }
+  // Se ainda faltar trabalho, a função agendada continua na próxima hora.
+  await writeScheduleState({ nextDueAt: Date.now() + appConfig.sync.intervalMinutes * 60_000, pending: more })
   return new Response(null, { status: 202 })
 }
