@@ -7,6 +7,8 @@ import { pickLocale, translate, type Locale } from './lib/i18n'
 import { csrfMiddleware, endSession, sessionMiddleware } from './lib/session'
 import { authRoutes } from './routes/auth'
 import { meRoutes } from './routes/me'
+import { photoRoutes } from './routes/photos'
+import { searchRoutes } from './routes/search'
 import { adminGraphRoutes } from './routes/admin/graph'
 import { adminLibraryRoutes } from './routes/admin/libraries'
 import { adminSyncRoutes } from './routes/admin/sync'
@@ -33,6 +35,8 @@ export function createApp() {
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/', authRoutes)
   app.route('/api', meRoutes)
+  app.route('/api', photoRoutes)
+  app.route('/api', searchRoutes)
   app.route('/api/admin', adminLibraryRoutes)
   app.route('/api/admin', adminGraphRoutes)
   app.route('/api/admin', adminSyncRoutes)
