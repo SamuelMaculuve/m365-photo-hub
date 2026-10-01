@@ -2,3 +2,6 @@
 .idea/
 .vscode/
 *.log
+
+# Backend Laravel antigo (repositório próprio): não faz parte deste ramo.
+/backend/
