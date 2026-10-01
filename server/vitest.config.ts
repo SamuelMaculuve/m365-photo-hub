@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
-    // Cada teste tem uma base SQLite nova em memória (ver test/setup.ts).
+    // Cada ficheiro de teste tem a sua base PGlite em memória.
     pool: 'forks',
     testTimeout: 20_000,
   },

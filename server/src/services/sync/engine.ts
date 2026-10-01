@@ -9,10 +9,9 @@ import { detectMediaType, type MediaType } from '../media-type'
 import { FolderTree, type Scope } from './folder-tree'
 import { toMediaAttributes } from './mapper'
 import { syncLog } from './log'
-import { withFolded } from '../folded'
 
 /** Campos derivados do conteúdo: se o conteúdo não mudou, um valor em falta não apaga o conhecido. */
-const CONTENT_FIELDS = ['takenAt', 'width', 'height', 'durationMs', 'latitude', 'longitude', 'placeName', 'placeFolded', 'placeRegion', 'placeCountry', 'placeDistanceKm', 'locationSource', 'metadata'] as const
+const CONTENT_FIELDS = ['takenAt', 'width', 'height', 'durationMs', 'latitude', 'longitude', 'placeName', 'placeRegion', 'placeCountry', 'placeDistanceKm', 'locationSource', 'metadata'] as const
 
 type MediaRow = typeof s.media.$inferInsert
 export type SliceResult = 'done' | 'more'
@@ -175,7 +174,7 @@ export class SyncEngine {
   }
 
   private row(item: Record<string, any>, type: MediaType, scope: Scope): MediaRow {
-    return withFolded({
+    return {
       ...toMediaAttributes(item, type),
       driveId: this.drive.id,
       libraryId: scope.library,
@@ -183,7 +182,7 @@ export class SyncEngine {
       sourceState: scope.library ? 'active' : 'out_of_scope',
       lastSeenSyncJobId: this.job.id,
       updatedAt: new Date(),
-    })
+    }
   }
 
   private async upsertMedia(rows: MediaRow[]): Promise<void> {
@@ -210,7 +209,7 @@ export class SyncEngine {
       }
       // Localização manual ou estimada não é apagada por uma sincronização sem GPS.
       if (row.latitude == null && old.locationSource && old.locationSource !== 'graph') {
-        Object.assign(row, { placeName: old.placeName, placeFolded: old.placeFolded, placeRegion: old.placeRegion, locationSource: old.locationSource })
+        Object.assign(row, { placeName: old.placeName, placeRegion: old.placeRegion, locationSource: old.locationSource })
       }
       if (row.takenAt) row.sortAt = row.takenAt
     }
@@ -287,7 +286,7 @@ export class SyncEngine {
         continue
       }
       // Inclui itens marcados como removidos: uma pasta restaurada da Reciclagem volta a trazê-los.
-      await this.db.update(s.media).set({ ...withFolded({ folderPath: scope.path.slice(0, 1024) }), libraryId: scope.library, sourceState: 'active', updatedAt: new Date() }).where(where)
+      await this.db.update(s.media).set({ libraryId: scope.library, folderPath: scope.path.slice(0, 1024), sourceState: 'active', updatedAt: new Date() }).where(where)
     }
   }
 

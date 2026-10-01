@@ -1,5 +1,4 @@
-import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm'
-import { escapeLike, iLike, strftime } from '../lib/sql'
+import { and, desc, eq, ilike, inArray, lt, or, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../db/client'
 import * as s from '../db/schema'
 import type { User } from '../lib/context'
@@ -17,23 +16,23 @@ export interface MediaFilters {
   favourite?: boolean
 }
 
-export { escapeLike }
+export const escapeLike = (v: string) => v.replace(/[\\%_]/g, (m) => `\\${m}`)
 
 /** Filtros da timeline (também usados pela pesquisa). */
 export function filterConditions(user: User, f: MediaFilters): SQL[] {
   const c: SQL[] = []
   if (f.type) c.push(eq(s.media.mediaType, f.type))
   if (f.library_id) c.push(eq(s.media.libraryId, f.library_id))
-  if (f.from) c.push(gte(s.media.sortAt, new Date(`${f.from}T00:00:00Z`)))
-  if (f.to) c.push(lte(s.media.sortAt, new Date(`${f.to}T23:59:59.999Z`)))
-  if (f.month) c.push(sql`cast(${strftime('%m', s.media.sortAt)} as integer) = ${f.month}`)
+  if (f.from) c.push(sql`${s.media.sortAt} >= ${`${f.from}T00:00:00Z`}::timestamptz`)
+  if (f.to) c.push(sql`${s.media.sortAt} <= ${`${f.to}T23:59:59.999Z`}::timestamptz`)
+  if (f.month) c.push(sql`extract(month from ${s.media.sortAt} at time zone 'UTC') = ${f.month}`)
   if (f.place) c.push(eq(s.media.placeName, f.place))
-  if (f.folder) c.push(iLike(s.media.folderPath, `${escapeLike(f.folder.replace(/\/+$/, ''))}%`))
+  if (f.folder) c.push(ilike(s.media.folderPath, `${escapeLike(f.folder.replace(/\/+$/, ''))}%`))
   if (f.album_id) {
     c.push(sql`exists (select 1 from ${s.albumMedia} where ${s.albumMedia.mediaId} = ${s.media.id} and ${s.albumMedia.albumId} = ${f.album_id})`)
   }
   if (f.favourite) {
-    c.push(sql`exists (select 1 from ${s.userMedia} where ${s.userMedia.mediaId} = ${s.media.id} and ${s.userMedia.userId} = ${user.id} and ${s.userMedia.isFavourite} = 1)`)
+    c.push(sql`exists (select 1 from ${s.userMedia} where ${s.userMedia.mediaId} = ${s.media.id} and ${s.userMedia.userId} = ${user.id} and ${s.userMedia.isFavourite} = true)`)
   }
   return c
 }
@@ -89,8 +88,8 @@ export class Timeline {
   }
 
   async buckets(user: User, filters: MediaFilters): Promise<{ month: string; count: number }[]> {
-    const month = strftime('%Y-%m', s.media.sortAt)
-    const rows = await this.db.select({ month, count: sql<number>`count(*)` }).from(s.media)
+    const month = sql<string>`to_char(${s.media.sortAt} at time zone 'UTC', 'YYYY-MM')`
+    const rows = await this.db.select({ month, count: sql<number>`count(*)::int` }).from(s.media)
       .where(and(...(await this.conditions(user, filters)))).groupBy(month).orderBy(desc(month))
     return rows.map((r) => ({ month: r.month, count: Number(r.count) }))
   }

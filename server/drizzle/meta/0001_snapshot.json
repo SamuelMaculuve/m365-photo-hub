@@ -1,6 +1,6 @@
 {
-  "id": "307ba949-d546-4eae-980d-0541f1dd900f",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "fff8c323-0fe4-47cc-9f7a-c083fe11566d",
+  "prevId": "307ba949-d546-4eae-980d-0541f1dd900f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2485,6 +2485,19 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "started_at": {
           "name": "started_at",

@@ -33,7 +33,7 @@ export const searchRoutes = new Hono<AppEnv>()
     if (precision === 'hidden') return c.json({ data: [] })
     // Só locais de media que o utilizador pode ver; coordenadas = centro das fotografias.
     const visible = await new Access(db).visibleCondition(user)
-    const count = sql<number>`count(*)`
+    const count = sql<number>`count(*)::int`
     const rows = await db.select({
       name: s.media.placeName, region: s.media.placeRegion, count, coverId: sql<number>`max(${s.media.id})`,
       lat: sql<number | null>`avg(${s.media.latitude})`, lng: sql<number | null>`avg(${s.media.longitude})`,

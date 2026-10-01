@@ -1,5 +1,4 @@
-import { and, count, desc, eq, gt, gte, inArray, isNull, lt, lte, max, or, sum, type SQL } from 'drizzle-orm'
-import { escapeLike, iLike } from '../../lib/sql'
+import { and, count, desc, eq, gt, gte, ilike, inArray, isNull, like, lt, lte, max, or, sum, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import * as s from '../../db/schema'
@@ -11,6 +10,7 @@ import { translate } from '../../lib/i18n'
 import { ROLES } from '../../lib/roles'
 import { intish, parse, queryObject } from '../../lib/validate'
 import { allSettings, updateSettings } from '../../services/settings'
+import { escapeLike } from '../../services/timeline'
 
 export const adminMiscRoutes = new Hono<AppEnv>()
   .get('/dashboard', async (c) => {
@@ -67,7 +67,7 @@ export const adminMiscRoutes = new Hono<AppEnv>()
     const limit = q.limit ?? 50
     const conds: SQL[] = []
     if (q.cursor) conds.push(lt(s.auditLogs.id, q.cursor))
-    if (q.action) conds.push(iLike(s.auditLogs.action, `${escapeLike(q.action)}%`))
+    if (q.action) conds.push(like(s.auditLogs.action, `${escapeLike(q.action)}%`))
     if (q.user_id) conds.push(eq(s.auditLogs.userId, q.user_id))
     if (q.from) conds.push(gte(s.auditLogs.createdAt, new Date(`${q.from}T00:00:00Z`)))
     if (q.to) conds.push(lte(s.auditLogs.createdAt, new Date(`${q.to}T23:59:59Z`)))
@@ -90,7 +90,7 @@ export const adminMiscRoutes = new Hono<AppEnv>()
     const page = p ?? 1
     const perPage = 50
     const pattern = q ? `%${escapeLike(q)}%` : null
-    const where = and(isNull(s.users.deletedAt), pattern ? or(iLike(s.users.name, pattern), iLike(s.users.email, pattern)) : undefined)
+    const where = and(isNull(s.users.deletedAt), pattern ? or(ilike(s.users.name, pattern), ilike(s.users.email, pattern)) : undefined)
     const [{ total }] = await db.select({ total: count() }).from(s.users).where(where)
     const rows = await db.select().from(s.users).where(where).orderBy(s.users.name).limit(perPage).offset((page - 1) * perPage)
     return c.json({

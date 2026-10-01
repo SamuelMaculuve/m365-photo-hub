@@ -9,7 +9,7 @@ React (frontend/) ──► Laravel API (backend/) ──► MySQL · Redis ─�
 ```
 
 > **Ramo `feature/netlify-backend`:** a aplicação corre inteira no Netlify, com um backend novo em
-> TypeScript (`server/`) e SQLite alojado no Turso. Ver [docs/NETLIFY.md](docs/NETLIFY.md).
+> TypeScript (`server/`) e Postgres (Netlify DB / PGlite). Ver [docs/NETLIFY.md](docs/NETLIFY.md).
 
 ## Documentação
 
@@ -22,7 +22,7 @@ React (frontend/) ──► Laravel API (backend/) ──► MySQL · Redis ─�
 | [docs/SECURITY.md](docs/SECURITY.md) | Modelo de segurança e privacidade |
 | [docs/AI.md](docs/AI.md) | IA (NVIDIA): descrições, etiquetas, OCR, pesquisa por significado |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Produção: Ubuntu, Nginx, PHP-FPM, MySQL, Redis, Supervisor, SSL |
-| [docs/NETLIFY.md](docs/NETLIFY.md) | Produção no Netlify: Functions, Turso, Blobs (backend `server/`) |
+| [docs/NETLIFY.md](docs/NETLIFY.md) | Produção no Netlify: Functions, Netlify DB, Blobs (backend `server/`) |
 | [frontend/README.md](frontend/README.md) | Detalhes do frontend |
 
 ## Requisitos (desenvolvimento, sem Docker)

@@ -9,7 +9,7 @@ Browser ──► Netlify (CDN) ── frontend/dist (React, estático)
                ├── a cada 5 min                 ──► Scheduled Function "sync-scheduled"
                └── sincronizações longas        ──► Background Function "sync-background" (até 15 min)
                                                       │
-                     Turso (SQLite alojado)     ◄─────┤
+                     Netlify DB (Postgres/Neon) ◄─────┤
                      Netlify Blobs (miniaturas) ◄─────┘──► Microsoft Graph ──► OneDrive / SharePoint
 ```
 
@@ -20,9 +20,8 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 | Laravel | Netlify |
 |---|---|
-| MySQL | SQLite/libSQL: **Turso** em produção; ficheiro local (`server/.data/app.db`) em desenvolvimento; memória nos testes |
-| Redis (sessões, cache, filas, locks) | Tabelas `sessions` e `cache_entries` na mesma base |
-| FULLTEXT do MySQL | Colunas de pesquisa sem acentos (`name_folded`, `folder_folded`, `place_folded`) preenchidas ao escrever |
+| MySQL | Postgres: **Netlify DB** em produção, **PGlite** (Postgres embutido) em desenvolvimento e testes |
+| Redis (sessões, cache, filas, locks) | Tabelas `sessions` e `cache_entries` no Postgres |
 | Workers + cron | Função agendada (*/5) e função em segundo plano |
 | Sincronização num job longo | Sincronização **por fatias**: cada invocação processa páginas do delta até ao limite de tempo, guarda o checkpoint e o estado, e a seguinte continua |
 | Miniaturas em disco | Netlify Blobs (store `thumbnails`) |
@@ -33,14 +32,9 @@ O `backend/` Laravel deixa de ser usado neste ramo. A API mantém o mesmo contra
 
 1. Ligue o repositório no Netlify (**Add new site → Import an existing project**) e escolha o ramo
    `feature/netlify-backend`. O `netlify.toml` já define o build, a pasta publicada e as funções.
-2. Crie a base no **Turso** (<https://turso.tech>, plano gratuito), numa região próxima da do Netlify
-   (por omissão as funções correm nos EUA, `us-east-2`). Com a CLI do Turso:
-   ```bash
-   turso db create m365-photo-hub
-   turso db show m365-photo-hub --url        # → TURSO_DATABASE_URL (libsql://...)
-   turso db tokens create m365-photo-hub     # → TURSO_AUTH_TOKEN
-   ```
-   O build aplica as migrações (`npm run db:migrate`) e falha se as variáveis do Turso não estiverem definidas.
+2. Active o **Netlify DB**: no painel do site (**Extensions → Netlify DB**) ou com
+   `npx netlify db init`. Isto cria a variável `NETLIFY_DATABASE_URL`.
+   O build aplica as migrações (`npm run db:migrate`) e falha se a base não estiver configurada.
 
 ## 2. Variáveis de ambiente
 
@@ -48,7 +42,6 @@ Em **Site configuration → Environment variables**:
 
 | Variável | Valor |
 |---|---|
-| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Ligação ao Turso (passo 2). Marque o token como secreto |
 | `APP_KEY` | 32 bytes em base64: `openssl rand -base64 32`. Cifra os tokens Microsoft e assina URLs. **Não a mude depois**: os tokens guardados deixam de poder ser lidos |
 | `APP_NAME` | Nome apresentado (ex.: `Fotos da Organização`) |
 | `APP_ENV` | `production` |
@@ -73,15 +66,13 @@ incluir Background Functions, a função agendada continua o trabalho a cada 5 m
 
 ```bash
 cd server && npm install
-APP_KEY=$(openssl rand -base64 32) AUTH_DEV_LOGIN=true npm run dev   # API em http://127.0.0.1:8000, SQLite em server/.data/app.db
+APP_KEY=$(openssl rand -base64 32) AUTH_DEV_LOGIN=true npm run dev   # API em http://127.0.0.1:8000, PGlite em server/.data
 cd ../frontend && npm run dev                                          # http://localhost:5173 (proxy para a porta 8000)
 ```
 
 O backend Laravel usa a mesma porta 8000: pare-o antes. Para usar o login Microsoft localmente, defina
 também as variáveis `MICROSOFT_*` (com `MICROSOFT_REDIRECT_URI=http://localhost:5173/auth/microsoft/callback`).
-Os dados locais ficam em `server/.data/app.db`; apague a pasta para recomeçar. Para trabalhar contra o
-Turso a partir do seu computador, defina `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` antes de `npm run dev`
-(as migrações aplicam-se com `npm run db:migrate`).
+Os dados locais ficam em `server/.data/pglite`; apague a pasta para recomeçar.
 
 Testes e tipos:
 
@@ -95,7 +86,4 @@ cd server && npm test && npm run typecheck
   Microsoft 365 (miniaturas ficam em cache no Netlify Blobs; vídeos e originais são um redirect).
 - **Bibliotecas muito grandes**: a primeira sincronização demora mais do que num servidor, porque avança
   por fatias. Fica retomável: um erro ou um timeout não perde o progresso.
-- **Custos**: invocações de funções e leituras de Blobs contam para o plano do Netlify; leituras, escritas e
-  armazenamento contam para o plano do Turso (o gratuito chega para os metadados de dezenas de milhares de fotos).
-- **Escritas**: o SQLite aceita uma escrita de cada vez. Para este uso (sobretudo leituras; a sincronização
-  escreve em lotes) não é um problema, mas sincronizações de muitos drives em simultâneo ficam em fila.
+- **Custos**: invocações de funções, leituras de Blobs e a base de dados contam para o plano do Netlify.

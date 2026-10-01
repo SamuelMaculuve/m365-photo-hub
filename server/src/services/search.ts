@@ -3,11 +3,18 @@ import type { Db } from '../db/client'
 import * as s from '../db/schema'
 import type { User } from '../lib/context'
 import { parseSearch } from './search-parser'
-import { escapeLike, fold } from '../lib/sql'
-import { type MediaFilters, Timeline } from './timeline'
+import { escapeLike, type MediaFilters, Timeline } from './timeline'
 
-/** Comparação sem maiúsculas nem acentos ("formacao" encontra "Formação"). */
-export { fold }
+const ACCENTS_FROM = 'áàâãäåéèêëíìîïóòôõöúùûüçñ'
+const ACCENTS_TO = 'aaaaaaeeeeiiiiooooouuuucn'
+
+/** Comparação sem maiúsculas nem acentos ("formacao" encontra "Formação"), portável entre PGlite e Neon. */
+export const fold = (v: string) => [...v.toLowerCase()].map((ch) => {
+  const i = ACCENTS_FROM.indexOf(ch)
+  return i >= 0 ? ACCENTS_TO[i] : ch
+}).join('')
+
+const folded = (col: SQL | unknown) => sql`translate(lower(${col}), ${ACCENTS_FROM}, ${ACCENTS_TO})`
 
 /**
  * Pesquisa textual sobre metadados (nome, pasta, local, álbuns, etiquetas).
@@ -37,15 +44,15 @@ export class Search {
   private matchTerm(term: string, user: User): SQL {
     const like = `%${escapeLike(fold(term))}%`
     return or(
-      sql`${s.media.nameFolded} like ${like} escape '\\'`,
-      sql`${s.media.folderFolded} like ${like} escape '\\'`,
-      sql`${s.media.placeFolded} like ${like} escape '\\'`,
+      sql`${folded(s.media.name)} like ${like}`,
+      sql`${folded(s.media.folderPath)} like ${like}`,
+      sql`${folded(s.media.placeName)} like ${like}`,
       sql`exists (select 1 from ${s.albumMedia} join ${s.albums} on ${s.albums.id} = ${s.albumMedia.albumId}
         where ${s.albumMedia.mediaId} = ${s.media.id} and ${s.albums.deletedAt} is null
         and (${s.albums.ownerId} = ${user.id} or ${s.albums.visibility} = 'organisation')
-        and ${s.albums.nameFolded} like ${like} escape '\\')`,
+        and ${folded(s.albums.name)} like ${like})`,
       sql`exists (select 1 from ${s.mediaTags} join ${s.tags} on ${s.tags.id} = ${s.mediaTags.tagId}
-        where ${s.mediaTags.mediaId} = ${s.media.id} and lower(${s.tags.name}) like ${like} escape '\\')`,
+        where ${s.mediaTags.mediaId} = ${s.media.id} and ${folded(s.tags.name)} like ${like})`,
     )!
   }
 
@@ -53,11 +60,11 @@ export class Search {
     const like = `%${escapeLike(fold(q))}%`
     const base = await this.timeline.conditions(user, {})
     const folders = await this.db.selectDistinct({ v: s.media.folderPath }).from(s.media)
-      .where(and(...base, sql`${s.media.folderFolded} like ${like} escape '\\'`)).limit(6)
+      .where(and(...base, sql`${folded(s.media.folderPath)} like ${like}`)).limit(6)
     const places = await this.db.selectDistinct({ v: s.media.placeName }).from(s.media)
-      .where(and(...base, isNotNull(s.media.placeName), sql`${s.media.placeFolded} like ${like} escape '\\'`)).limit(6)
+      .where(and(...base, isNotNull(s.media.placeName), sql`${folded(s.media.placeName)} like ${like}`)).limit(6)
     const albums = await this.db.select({ id: s.albums.id, name: s.albums.name }).from(s.albums)
-      .where(and(isNull(s.albums.deletedAt), or(eq(s.albums.ownerId, user.id), eq(s.albums.visibility, 'organisation')), sql`${s.albums.nameFolded} like ${like} escape '\\'`)).limit(6)
+      .where(and(isNull(s.albums.deletedAt), or(eq(s.albums.ownerId, user.id), eq(s.albums.visibility, 'organisation')), sql`${folded(s.albums.name)} like ${like}`)).limit(6)
     return { folders: folders.map((r) => r.v).filter(Boolean), albums, places: places.map((r) => r.v).filter(Boolean) }
   }
 }

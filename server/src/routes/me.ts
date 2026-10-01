@@ -1,5 +1,4 @@
-import { and, asc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
-import { escapeLike, iLike } from '../lib/sql'
+import { and, asc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { libraries, users } from '../db/schema'
@@ -49,9 +48,9 @@ export const meRoutes = new Hono<AppEnv>()
   .get('/users/search', async (c) => {
     const user = requireUser(c)
     const { q } = parse(z.object({ q: z.string().min(2).max(100) }), queryObject(c.req.url))
-    const pattern = `%${escapeLike(q)}%`
+    const pattern = `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
     const rows = await c.get('db').select({ id: users.id, name: users.name, email: users.email }).from(users)
-      .where(and(eq(users.isActive, true), isNull(users.deletedAt), ne(users.id, user.id), or(iLike(users.name, pattern), iLike(users.email, pattern))))
+      .where(and(eq(users.isActive, true), isNull(users.deletedAt), ne(users.id, user.id), or(ilike(users.name, pattern), ilike(users.email, pattern))))
       .orderBy(asc(users.name)).limit(10)
     return c.json({ data: rows })
   })

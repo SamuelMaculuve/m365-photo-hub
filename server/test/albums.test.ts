@@ -1,14 +1,13 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import * as s from '../src/db/schema'
-import { fold } from '../src/lib/sql'
 import { Client, grant, makeLibrary, makeMedia, makeUser } from './helpers'
 import { testDb } from './setup'
 
 const as = async (u: s.User) => new Client().actingAs(u)
 const j = async (r: Response) => (await r.json()) as any
 const makeAlbum = async (attrs: Partial<typeof s.albums.$inferInsert> = {}) =>
-  (await testDb().insert(s.albums).values({ ownerId: attrs.ownerId ?? (await makeUser()).id, name: 'Álbum', ...attrs, nameFolded: fold(attrs.name ?? 'Álbum') }).returning())[0]
+  (await testDb().insert(s.albums).values({ ownerId: attrs.ownerId ?? (await makeUser()).id, name: 'Álbum', ...attrs }).returning())[0]
 
 describe('albums', () => {
   it('creates an album and adds only visible media', async () => {

@@ -1,5 +1,4 @@
-import { and, count, desc, eq, inArray, isNull, max, min, or } from 'drizzle-orm'
-import { escapeLike, fold, iLike } from '../lib/sql'
+import { and, count, desc, eq, ilike, inArray, isNull, max, min, or } from 'drizzle-orm'
 import type { Db } from '../db/client'
 import * as s from '../db/schema'
 import { audit } from '../lib/audit'
@@ -8,6 +7,7 @@ import { iso } from '../lib/dates'
 import { forbidden, notFound, validationError } from '../lib/errors'
 import { Access } from './access'
 import { mediaResource } from './media-resource'
+import { escapeLike } from './timeline'
 
 const PER_PAGE = 48
 
@@ -33,7 +33,7 @@ export class AlbumService {
     const where = and(
       isNull(s.albums.deletedAt),
       or(eq(s.albums.ownerId, user.id), eq(s.albums.visibility, 'organisation')),
-      q ? iLike(s.albums.nameFolded, `%${escapeLike(fold(q))}%`) : undefined,
+      q ? ilike(s.albums.name, `%${escapeLike(q)}%`) : undefined,
     )
     const [{ total }] = await this.db.select({ total: count() }).from(s.albums).where(where)
     const rows = await this.db.select().from(s.albums).where(where).orderBy(desc(s.albums.updatedAt), desc(s.albums.id)).limit(PER_PAGE).offset((page - 1) * PER_PAGE)
@@ -41,7 +41,7 @@ export class AlbumService {
   }
 
   async create(user: User, data: { name: string; description?: string | null; visibility?: string }) {
-    const [album] = await this.db.insert(s.albums).values({ ownerId: user.id, name: data.name, nameFolded: fold(data.name), description: data.description ?? null, visibility: data.visibility ?? 'private' }).returning()
+    const [album] = await this.db.insert(s.albums).values({ ownerId: user.id, name: data.name, description: data.description ?? null, visibility: data.visibility ?? 'private' }).returning()
     await audit(this.db, { action: 'album.create', userId: user.id, subject: { type: 'album', id: album.id }, context: { name: album.name }, ip: this.ip })
     return album
   }
@@ -52,7 +52,7 @@ export class AlbumService {
       if (!hit) throw validationError('cover_media_id', 'not_found')
     }
     const values: Partial<s.Album> = { updatedAt: new Date() }
-    if (data.name !== undefined) Object.assign(values, { name: data.name, nameFolded: fold(data.name) })
+    if (data.name !== undefined) values.name = data.name
     if (data.description !== undefined) values.description = data.description
     if (data.visibility !== undefined) values.visibility = data.visibility
     if (data.cover_media_id !== undefined) values.coverMediaId = data.cover_media_id

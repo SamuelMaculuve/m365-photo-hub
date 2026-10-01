@@ -11,7 +11,6 @@ import { Access } from '../services/access'
 import { detectMediaType } from '../services/media-type'
 import { findKnownPlace, resolvePlace } from '../services/places'
 import { PLACES } from '../services/places-data'
-import { withFolded } from '../services/folded'
 import { OneDrive } from '../microsoft/onedrive'
 import { GraphAuth } from '../microsoft/auth'
 import { Cache } from '../lib/cache'
@@ -63,7 +62,7 @@ export const locationRoutes = new Hono<AppEnv>()
       values = { latitude: known[2], longitude: known[3], placeName: known[0], placeRegion: known[1], placeCountry: 'MZ', placeDistanceKm: null, locationSource: 'manual', locationSetBy: user.id }
     }
 
-    const rows = editable.length ? await db.update(s.media).set({ ...withFolded({ placeName: values.placeName ?? null }), ...values, updatedAt: new Date() }).where(and(
+    const rows = editable.length ? await db.update(s.media).set({ ...values, updatedAt: new Date() }).where(and(
       inArray(s.media.id, data.ids), inArray(s.media.libraryId, editable), eq(s.media.sourceState, 'active'),
       data.overwrite_gps ? undefined : or(isNull(s.media.locationSource), inArray(s.media.locationSource, ['estimated', 'manual'])),
     )).returning({ id: s.media.id }) : []

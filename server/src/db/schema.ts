@@ -1,34 +1,45 @@
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import {
+  bigint,
+  boolean,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from 'drizzle-orm/pg-core'
 
-const id = () => integer().primaryKey({ autoIncrement: true })
-// Datas em milissegundos desde a época (UTC): ordenáveis, indexáveis e sem ambiguidade de fuso.
-const ts = (name: string) => integer(name, { mode: 'timestamp_ms' })
-const now = () => new Date()
+const id = () => integer().primaryKey().generatedByDefaultAsIdentity()
+const ts = (name?: string) => (name ? timestamp(name, { withTimezone: true, mode: 'date' }) : timestamp({ withTimezone: true, mode: 'date' }))
 const timestamps = {
-  createdAt: ts('created_at').notNull().$defaultFn(now),
-  updatedAt: ts('updated_at').notNull().$defaultFn(now),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
 }
 
 // ---------------------------------------------------------------------------
 // Identidade e sessão
 // ---------------------------------------------------------------------------
 
-export const users = sqliteTable(
+export const users = pgTable(
   'users',
   {
     id: id(),
     // Identidade Microsoft Entra: o "oid" é imutável; email/UPN podem mudar.
-    entraOid: text('entra_oid').unique(),
-    tenantId: text('tenant_id'),
-    name: text().notNull(),
-    email: text(),
-    upn: text(),
-    locale: text().notNull().default('pt'),
-    role: text().notNull().default('viewer'),
-    roleSource: text('role_source').notNull().default('entra'), // entra | local
-    groupIds: text('group_ids', { mode: 'json' }).$type<string[]>(),
+    entraOid: varchar('entra_oid', { length: 64 }).unique(),
+    tenantId: varchar('tenant_id', { length: 64 }),
+    name: varchar({ length: 255 }).notNull(),
+    email: varchar({ length: 255 }),
+    upn: varchar({ length: 255 }),
+    locale: varchar({ length: 5 }).notNull().default('pt'),
+    role: varchar({ length: 32 }).notNull().default('viewer'),
+    roleSource: varchar('role_source', { length: 16 }).notNull().default('entra'), // entra | local
+    groupIds: jsonb('group_ids').$type<string[]>(),
     groupsSyncedAt: ts('groups_synced_at'),
-    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    isActive: boolean('is_active').notNull().default(true),
     lastLoginAt: ts('last_login_at'),
     deletedAt: ts('deleted_at'),
     ...timestamps,
@@ -37,27 +48,27 @@ export const users = sqliteTable(
 )
 
 /** Sessões do SPA. O id é o SHA-256 do valor do cookie (o valor nunca é guardado). */
-export const sessions = sqliteTable(
+export const sessions = pgTable(
   'sessions',
   {
-    id: text().primaryKey(),
+    id: varchar({ length: 64 }).primaryKey(),
     userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
-    ip: text(),
+    ip: varchar({ length: 45 }),
     userAgent: text('user_agent'),
     expiresAt: ts('expires_at').notNull(),
-    lastActivityAt: ts('last_activity_at').notNull().$defaultFn(now),
-    createdAt: ts('created_at').notNull().$defaultFn(now),
+    lastActivityAt: ts('last_activity_at').notNull().defaultNow(),
+    createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [index('sessions_user_idx').on(t.userId), index('sessions_expires_idx').on(t.expiresAt)],
 )
 
 /** Tokens delegados da Microsoft, cifrados em repouso (AES-256-GCM com APP_KEY). */
-export const oauthTokens = sqliteTable(
+export const oauthTokens = pgTable(
   'oauth_tokens',
   {
     id: id(),
     userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    provider: text().notNull().default('microsoft'),
+    provider: varchar({ length: 32 }).notNull().default('microsoft'),
     accessToken: text('access_token').notNull(),
     refreshToken: text('refresh_token'),
     scopes: text(),
@@ -68,13 +79,11 @@ export const oauthTokens = sqliteTable(
 )
 
 /** Cache e locks partilhados entre invocações (substitui o Redis). */
-export const cacheEntries = sqliteTable(
+export const cacheEntries = pgTable(
   'cache_entries',
   {
-    key: text().primaryKey(),
-    value: text({ mode: 'json' }).notNull(),
-    // Contadores de rate limit (incremento atómico sem ler o JSON).
-    counter: integer().notNull().default(0),
+    key: varchar({ length: 255 }).primaryKey(),
+    value: jsonb().notNull(),
     expiresAt: ts('expires_at'),
   },
   (t) => [index('cache_expires_idx').on(t.expiresAt)],
@@ -84,84 +93,84 @@ export const cacheEntries = sqliteTable(
 // Armazenamento Microsoft
 // ---------------------------------------------------------------------------
 
-export const drives = sqliteTable('drives', {
+export const drives = pgTable('drives', {
   id: id(),
-  driveId: text('drive_id').notNull().unique(),
-  driveType: text('drive_type').notNull(), // personal | business | documentLibrary | demo
-  siteId: text('site_id'),
-  name: text().notNull(),
-  webUrl: text('web_url'),
+  driveId: varchar('drive_id', { length: 191 }).notNull().unique(),
+  driveType: varchar('drive_type', { length: 32 }).notNull(), // personal | business | documentLibrary | demo
+  siteId: varchar('site_id', { length: 191 }),
+  name: varchar({ length: 255 }).notNull(),
+  webUrl: varchar('web_url', { length: 2048 }),
   ownerUserId: integer('owner_user_id').references(() => users.id, { onDelete: 'set null' }),
-  authMode: text('auth_mode').notNull().default('app'), // app | delegated
+  authMode: varchar('auth_mode', { length: 16 }).notNull().default('app'), // app | delegated
   ...timestamps,
 })
 
-export const driveSyncStates = sqliteTable('drive_sync_states', {
+export const driveSyncStates = pgTable('drive_sync_states', {
   id: id(),
   driveId: integer('drive_id').notNull().unique().references(() => drives.id, { onDelete: 'cascade' }),
   deltaLink: text('delta_link'),
   resumeLink: text('resume_link'), // checkpoint de uma sincronização interrompida
-  status: text().notNull().default('idle'), // idle | running | failed
+  status: varchar({ length: 16 }).notNull().default('idle'), // idle | running | failed
   lastStartedAt: ts('last_started_at'),
   lastCompletedAt: ts('last_completed_at'),
   lastError: text('last_error'),
-  itemsSeen: integer('items_seen').notNull().default(0),
+  itemsSeen: bigint('items_seen', { mode: 'number' }).notNull().default(0),
   ...timestamps,
 })
 
-export const driveFolders = sqliteTable(
+export const driveFolders = pgTable(
   'drive_folders',
   {
     id: id(),
     driveId: integer('drive_id').notNull().references(() => drives.id, { onDelete: 'cascade' }),
-    itemId: text('item_id').notNull(),
-    parentItemId: text('parent_item_id'),
-    name: text().notNull(),
-    isRoot: integer('is_root', { mode: 'boolean' }).notNull().default(false),
-    isDeleted: integer('is_deleted', { mode: 'boolean' }).notNull().default(false),
+    itemId: varchar('item_id', { length: 191 }).notNull(),
+    parentItemId: varchar('parent_item_id', { length: 191 }),
+    name: varchar({ length: 400 }).notNull(),
+    isRoot: boolean('is_root').notNull().default(false),
+    isDeleted: boolean('is_deleted').notNull().default(false),
     ...timestamps,
   },
   (t) => [uniqueIndex('drive_folders_drive_item').on(t.driveId, t.itemId), index('drive_folders_parent').on(t.driveId, t.parentItemId)],
 )
 
-export const libraries = sqliteTable('libraries', {
+export const libraries = pgTable('libraries', {
   id: id(),
-  name: text().notNull(),
-  slug: text().notNull().unique(),
+  name: varchar({ length: 255 }).notNull(),
+  slug: varchar({ length: 255 }).notNull().unique(),
   description: text(),
-  visibility: text().notNull().default('restricted'), // organisation | restricted
-  enabled: integer({ mode: 'boolean' }).notNull().default(true),
-  allowPublicLinks: integer('allow_public_links', { mode: 'boolean' }).notNull().default(false),
-  allowWrites: integer('allow_writes', { mode: 'boolean' }).notNull().default(false),
-  allowAi: integer('allow_ai', { mode: 'boolean' }).notNull().default(false),
-  allowFaces: integer('allow_faces', { mode: 'boolean' }).notNull().default(false),
+  visibility: varchar({ length: 16 }).notNull().default('restricted'), // organisation | restricted
+  enabled: boolean().notNull().default(true),
+  allowPublicLinks: boolean('allow_public_links').notNull().default(false),
+  allowWrites: boolean('allow_writes').notNull().default(false),
+  allowAi: boolean('allow_ai').notNull().default(false),
+  allowFaces: boolean('allow_faces').notNull().default(false),
   createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
   deletedAt: ts('deleted_at'),
   ...timestamps,
 })
 
-export const libraryRoots = sqliteTable(
+export const libraryRoots = pgTable(
   'library_roots',
   {
     id: id(),
     libraryId: integer('library_id').notNull().references(() => libraries.id, { onDelete: 'cascade' }),
     driveId: integer('drive_id').notNull().references(() => drives.id, { onDelete: 'cascade' }),
-    rootItemId: text('root_item_id').notNull(),
-    rootPath: text('root_path'),
+    rootItemId: varchar('root_item_id', { length: 191 }).notNull(),
+    rootPath: varchar('root_path', { length: 1024 }),
     ...timestamps,
   },
   (t) => [uniqueIndex('library_roots_drive_item').on(t.driveId, t.rootItemId)],
 )
 
-export const libraryAccess = sqliteTable(
+export const libraryAccess = pgTable(
   'library_access',
   {
     id: id(),
     libraryId: integer('library_id').notNull().references(() => libraries.id, { onDelete: 'cascade' }),
-    principalType: text('principal_type').notNull(), // user | group
-    principalId: text('principal_id').notNull(), // oid do utilizador ou do grupo Entra
-    displayName: text('display_name'),
-    role: text().notNull().default('viewer'),
+    principalType: varchar('principal_type', { length: 8 }).notNull(), // user | group
+    principalId: varchar('principal_id', { length: 64 }).notNull(), // oid do utilizador ou do grupo Entra
+    displayName: varchar('display_name', { length: 255 }),
+    role: varchar({ length: 32 }).notNull().default('viewer'),
     ...timestamps,
   },
   (t) => [
@@ -184,23 +193,19 @@ export type MediaMetadata = {
   orientation?: number | null
 }
 
-export const media = sqliteTable(
+export const media = pgTable(
   'media',
   {
     id: id(),
     libraryId: integer('library_id').references(() => libraries.id, { onDelete: 'set null' }),
     driveId: integer('drive_id').notNull().references(() => drives.id, { onDelete: 'cascade' }),
-    itemId: text('item_id').notNull(),
-    parentItemId: text('parent_item_id'),
-    name: text().notNull(),
-    folderPath: text('folder_path'),
-    // Versões sem maiúsculas nem acentos, para a pesquisa ("formacao" encontra "Formação").
-    nameFolded: text('name_folded'),
-    folderFolded: text('folder_folded'),
-    placeFolded: text('place_folded'),
-    mediaType: text('media_type').notNull(), // image | video
-    mimeType: text('mime_type'),
-    size: integer().notNull().default(0),
+    itemId: varchar('item_id', { length: 191 }).notNull(),
+    parentItemId: varchar('parent_item_id', { length: 191 }),
+    name: varchar({ length: 400 }).notNull(),
+    folderPath: varchar('folder_path', { length: 1024 }),
+    mediaType: varchar('media_type', { length: 8 }).notNull(), // image | video
+    mimeType: varchar('mime_type', { length: 100 }),
+    size: bigint({ mode: 'number' }).notNull().default(0),
     width: integer(),
     height: integer(),
     durationMs: integer('duration_ms'),
@@ -209,21 +214,21 @@ export const media = sqliteTable(
     sourceModifiedAt: ts('source_modified_at'),
     // taken_at ?? source_created_at — calculado pela aplicação para ser indexável.
     sortAt: ts('sort_at').notNull(),
-    latitude: real(),
-    longitude: real(),
-    placeName: text('place_name'),
-    placeRegion: text('place_region'),
-    placeCountry: text('place_country'),
-    placeDistanceKm: real('place_distance_km'),
-    locationSource: text('location_source'), // graph | exif | estimated | manual
+    latitude: doublePrecision(),
+    longitude: doublePrecision(),
+    placeName: varchar('place_name', { length: 120 }),
+    placeRegion: varchar('place_region', { length: 120 }),
+    placeCountry: varchar('place_country', { length: 2 }),
+    placeDistanceKm: doublePrecision('place_distance_km'),
+    locationSource: varchar('location_source', { length: 16 }), // graph | exif | estimated | manual
     locationSetBy: integer('location_set_by').references(() => users.id, { onDelete: 'set null' }),
-    checksum: text(),
-    etag: text(),
-    ctag: text(),
-    webUrl: text('web_url'),
-    metadata: text({ mode: 'json' }).$type<MediaMetadata>(),
-    sourceState: text('source_state').notNull().default('active'), // active | removed_at_source | out_of_scope
-    metadataExtracted: integer('metadata_extracted', { mode: 'boolean' }).notNull().default(false),
+    checksum: varchar({ length: 64 }),
+    etag: varchar({ length: 191 }),
+    ctag: varchar({ length: 191 }),
+    webUrl: varchar('web_url', { length: 2048 }),
+    metadata: jsonb().$type<MediaMetadata>(),
+    sourceState: varchar('source_state', { length: 20 }).notNull().default('active'), // active | removed_at_source | out_of_scope
+    metadataExtracted: boolean('metadata_extracted').notNull().default(false),
     lastSeenSyncJobId: integer('last_seen_sync_job_id'),
     hiddenAt: ts('hidden_at'), // lixo da aplicação
     hiddenBy: integer('hidden_by').references(() => users.id, { onDelete: 'set null' }),
@@ -239,31 +244,31 @@ export const media = sqliteTable(
   ],
 )
 
-export const userMedia = sqliteTable(
+export const userMedia = pgTable(
   'user_media',
   {
     userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     mediaId: integer('media_id').notNull().references(() => media.id, { onDelete: 'cascade' }),
-    isFavourite: integer('is_favourite', { mode: 'boolean' }).notNull().default(false),
+    isFavourite: boolean('is_favourite').notNull().default(false),
     favouritedAt: ts('favourited_at'),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.userId, t.mediaId] }), index('user_media_fav').on(t.userId, t.isFavourite)],
 )
 
-export const tags = sqliteTable('tags', {
+export const tags = pgTable('tags', {
   id: id(),
-  name: text().notNull(),
-  slug: text().notNull().unique(),
+  name: varchar({ length: 100 }).notNull(),
+  slug: varchar({ length: 120 }).notNull().unique(),
   ...timestamps,
 })
 
-export const mediaTags = sqliteTable(
+export const mediaTags = pgTable(
   'media_tags',
   {
     mediaId: integer('media_id').notNull().references(() => media.id, { onDelete: 'cascade' }),
     tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
-    source: text().notNull().default('user'), // user | ai
+    source: varchar({ length: 8 }).notNull().default('user'), // user | ai
     createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,
   },
@@ -274,23 +279,22 @@ export const mediaTags = sqliteTable(
 // Álbuns e partilhas
 // ---------------------------------------------------------------------------
 
-export const albums = sqliteTable(
+export const albums = pgTable(
   'albums',
   {
     id: id(),
     ownerId: integer('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    name: text().notNull(),
-    nameFolded: text('name_folded'),
+    name: varchar({ length: 255 }).notNull(),
     description: text(),
     coverMediaId: integer('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
-    visibility: text().notNull().default('private'), // private | organisation
+    visibility: varchar({ length: 16 }).notNull().default('private'), // private | organisation
     deletedAt: ts('deleted_at'),
     ...timestamps,
   },
   (t) => [index('albums_owner').on(t.ownerId, t.updatedAt), index('albums_visibility').on(t.visibility, t.updatedAt)],
 )
 
-export const albumMedia = sqliteTable(
+export const albumMedia = pgTable(
   'album_media',
   {
     albumId: integer('album_id').notNull().references(() => albums.id, { onDelete: 'cascade' }),
@@ -302,16 +306,16 @@ export const albumMedia = sqliteTable(
   (t) => [primaryKey({ columns: [t.albumId, t.mediaId] }), index('album_media_position').on(t.albumId, t.position), index('album_media_media').on(t.mediaId)],
 )
 
-export const shares = sqliteTable(
+export const shares = pgTable(
   'shares',
   {
     id: id(),
-    tokenHash: text('token_hash').notNull().unique(),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
     createdBy: integer('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    shareableType: text('shareable_type').notNull(), // album | media
+    shareableType: varchar('shareable_type', { length: 8 }).notNull(), // album | media
     albumId: integer('album_id').references(() => albums.id, { onDelete: 'cascade' }),
-    audience: text().notNull(), // organisation | users | public
-    passwordHash: text('password_hash'),
+    audience: varchar({ length: 16 }).notNull(), // organisation | users | public
+    passwordHash: varchar('password_hash', { length: 255 }),
     expiresAt: ts('expires_at'),
     revokedAt: ts('revoked_at'),
     viewCount: integer('view_count').notNull().default(0),
@@ -321,7 +325,7 @@ export const shares = sqliteTable(
   (t) => [index('shares_creator').on(t.createdBy, t.createdAt)],
 )
 
-export const shareRecipients = sqliteTable(
+export const shareRecipients = pgTable(
   'share_recipients',
   {
     shareId: integer('share_id').notNull().references(() => shares.id, { onDelete: 'cascade' }),
@@ -330,7 +334,7 @@ export const shareRecipients = sqliteTable(
   (t) => [primaryKey({ columns: [t.shareId, t.userId] }), index('share_recipients_user').on(t.userId)],
 )
 
-export const shareMedia = sqliteTable(
+export const shareMedia = pgTable(
   'share_media',
   {
     shareId: integer('share_id').notNull().references(() => shares.id, { onDelete: 'cascade' }),
@@ -350,23 +354,23 @@ export interface SyncJobState {
   fullScan?: boolean
 }
 
-export const syncJobs = sqliteTable(
+export const syncJobs = pgTable(
   'sync_jobs',
   {
     id: id(),
     driveId: integer('drive_id').notNull().references(() => drives.id, { onDelete: 'cascade' }),
     libraryId: integer('library_id').references(() => libraries.id, { onDelete: 'set null' }),
-    type: text().notNull(), // initial | incremental | full_resync
-    status: text().notNull().default('queued'), // queued | running | completed | failed
-    totalEstimate: integer('total_estimate'),
-    processed: integer().notNull().default(0),
-    created: integer().notNull().default(0),
-    updated: integer().notNull().default(0),
-    removed: integer().notNull().default(0),
-    errors: integer().notNull().default(0),
+    type: varchar({ length: 16 }).notNull(), // initial | incremental | full_resync
+    status: varchar({ length: 16 }).notNull().default('queued'), // queued | running | completed | failed
+    totalEstimate: bigint('total_estimate', { mode: 'number' }),
+    processed: bigint({ mode: 'number' }).notNull().default(0),
+    created: bigint({ mode: 'number' }).notNull().default(0),
+    updated: bigint({ mode: 'number' }).notNull().default(0),
+    removed: bigint({ mode: 'number' }).notNull().default(0),
+    errors: bigint({ mode: 'number' }).notNull().default(0),
     triggeredBy: integer('triggered_by').references(() => users.id, { onDelete: 'set null' }),
     // Estado entre invocações (a sincronização corre por partes): ficheiros à espera da pasta-mãe e pastas alteradas.
-    state: text({ mode: 'json' }).$type<SyncJobState>(),
+    state: jsonb().$type<SyncJobState>(),
     attempts: integer().notNull().default(0),
     startedAt: ts('started_at'),
     finishedAt: ts('finished_at'),
@@ -375,33 +379,33 @@ export const syncJobs = sqliteTable(
   (t) => [index('sync_jobs_status').on(t.status, t.createdAt), index('sync_jobs_drive').on(t.driveId, t.createdAt)],
 )
 
-export const syncLogs = sqliteTable(
+export const syncLogs = pgTable(
   'sync_logs',
   {
     id: id(),
     syncJobId: integer('sync_job_id').references(() => syncJobs.id, { onDelete: 'cascade' }),
-    level: text().notNull(), // info | warning | error
-    code: text().notNull(),
-    message: text().notNull(),
-    itemId: text('item_id'),
-    context: text({ mode: 'json' }).$type<Record<string, unknown>>(),
-    createdAt: ts('created_at').notNull().$defaultFn(now),
+    level: varchar({ length: 10 }).notNull(), // info | warning | error
+    code: varchar({ length: 64 }).notNull(),
+    message: varchar({ length: 1000 }).notNull(),
+    itemId: varchar('item_id', { length: 191 }),
+    context: jsonb().$type<Record<string, unknown>>(),
+    createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [index('sync_logs_level').on(t.level, t.createdAt), index('sync_logs_job').on(t.syncJobId)],
 )
 
-export const auditLogs = sqliteTable(
+export const auditLogs = pgTable(
   'audit_logs',
   {
     id: id(),
     userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
-    action: text().notNull(),
-    subjectType: text('subject_type'),
+    action: varchar({ length: 64 }).notNull(),
+    subjectType: varchar('subject_type', { length: 32 }),
     subjectId: integer('subject_id'),
-    ip: text(),
-    result: text().notNull().default('success'), // success | denied | error
-    context: text({ mode: 'json' }).$type<Record<string, unknown>>(),
-    createdAt: ts('created_at').notNull().$defaultFn(now),
+    ip: varchar({ length: 45 }),
+    result: varchar({ length: 16 }).notNull().default('success'), // success | denied | error
+    context: jsonb().$type<Record<string, unknown>>(),
+    createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [
     index('audit_created').on(t.createdAt, t.id),
@@ -411,9 +415,9 @@ export const auditLogs = sqliteTable(
   ],
 )
 
-export const settings = sqliteTable('settings', {
-  key: text().primaryKey(),
-  value: text({ mode: 'json' }),
+export const settings = pgTable('settings', {
+  key: varchar({ length: 64 }).primaryKey(),
+  value: jsonb(),
   updatedBy: integer('updated_by').references(() => users.id, { onDelete: 'set null' }),
   ...timestamps,
 })
