@@ -19,6 +19,8 @@ export function filtersFromSearchParams(sp: URLSearchParams): SearchFilters {
   if (Number.isInteger(album) && album > 0) f.album_id = album
   const lib = Number(sp.get('library_id'))
   if (Number.isInteger(lib) && lib > 0) f.library_id = lib
+  const org = Number(sp.get('organization_id'))
+  if (Number.isInteger(org) && org > 0) f.organization_id = org
   if (sp.get('favourite') === '1') f.favourite = true
   if (sp.get('semantic') === '1') f.semantic = true
   const place = sp.get('place')?.trim()
@@ -36,6 +38,7 @@ export function searchParamsFromFilters(f: SearchFilters): URLSearchParams {
   if (f.folder) sp.set('folder', f.folder)
   if (f.album_id) sp.set('album_id', String(f.album_id))
   if (f.library_id) sp.set('library_id', String(f.library_id))
+  if (f.organization_id) sp.set('organization_id', String(f.organization_id))
   if (f.favourite) sp.set('favourite', '1')
   if (f.semantic) sp.set('semantic', '1')
   if (f.place) sp.set('place', f.place)
@@ -43,7 +46,7 @@ export function searchParamsFromFilters(f: SearchFilters): URLSearchParams {
 }
 
 export function hasActiveFilters(f: SearchFilters): boolean {
-  return Boolean(f.type || f.from || f.to || f.folder || f.album_id || f.library_id || f.favourite || f.place)
+  return Boolean(f.type || f.from || f.to || f.folder || f.album_id || f.library_id || f.organization_id || f.favourite || f.place)
 }
 
 export type InterpretedChip =

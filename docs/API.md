@@ -106,7 +106,11 @@ A língua das mensagens segue `users.locale` (ou `Accept-Language` em rotas púb
   "role": "super_admin",               // super_admin | photo_admin | editor | contributor | viewer
   "permissions": { "admin": true, "manage_libraries": true, "manage_sync": true,
                    "manage_users": true, "view_audit": true, "delete_from_source": true, "upload": true },
-  "libraries": [ { "id": 1, "name": "Fotos Institucionais", "role": "viewer" } ] }
+  "libraries": [ { "id": 1, "name": "Fotos Institucionais", "role": "viewer", "organization_id": 1 } ],
+  // Contas Microsoft ligadas (uma por organização) e organizações com conteúdo visível.
+  "identities": [ { "id": 3, "email": "samuel@tvsurdo.com", "last_login_at": "…",
+                    "organization": { "id": 2, "name": "TV Surdo", "slug": "tvsurdo", "color": "#E3008C" } } ],
+  "organizations": [ { "id": 1, "name": "H2N", "slug": "h2n", "color": null }, { "id": 2, "name": "TV Surdo", … } ] }
 ```
 
 ---
@@ -116,7 +120,8 @@ A língua das mensagens segue `users.locale` (ou `Accept-Language` em rotas púb
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/auth/microsoft/redirect` | Inicia o login com a Microsoft (navegação completa, não XHR) |
-| GET | `/auth/microsoft/callback` | Callback OAuth; redirecciona para `/` ou `/login?error=<code>` com `code` ∈ `login_failed`, `invalid_state`, `invalid_tenant`, `access_denied`, `account_disabled` |
+| GET | `/auth/microsoft/link` | Com sessão: liga outra conta Microsoft (ex.: de outra organização) ao perfil actual |
+| GET | `/auth/microsoft/callback` | Callback OAuth; redirecciona para `/` ou `/login?error=<code>` com `code` ∈ `login_failed`, `invalid_state`, `invalid_tenant` (organização não registada/inactiva), `access_denied`, `account_disabled`. No fluxo de ligação redirecciona para `/settings?linked=<slug>` ou `/settings?link_error=<code>` (inclui `identity_taken`). Com `?admin_consent=True&tenant=` (regresso do consentimento de administrador) marca a organização como consentida se houver sessão de `super_admin` |
 | POST | `/auth/logout` | Termina sessão → `{ "data": { "logout_url": "https://login.microsoftonline.com/..." } }` |
 | POST | `/auth/dev-login` | **Só com `APP_ENV=local` e `AUTH_DEV_LOGIN=true`**: `{ "email": "..." }` inicia sessão sem Microsoft |
 | GET | `/api/auth/config` | Público: `{ "data": { "app_name": "...", "microsoft_configured": true, "dev_login": false } }` |
@@ -127,6 +132,7 @@ A língua das mensagens segue `users.locale` (ou `Accept-Language` em rotas púb
 |---|---|---|
 | GET | `/api/users/me` | Utilizador actual (objecto acima) |
 | PATCH | `/api/users/me` | `{ "locale": "pt" \| "en" }` |
+| DELETE | `/api/users/me/identities/{id}` | Desliga uma conta Microsoft do perfil → utilizador actual. `409 conflict` se for a última |
 | GET | `/api/users/search?q=` | Procura utilizadores da aplicação (para partilhar) → `[{id,name,email}]` |
 
 ## Fotos e vídeos
@@ -134,7 +140,7 @@ A língua das mensagens segue `users.locale` (ou `Accept-Language` em rotas púb
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/timeline/buckets` | `[{ "month": "2026-09", "count": 412 }]` (desc). Aceita os mesmos filtros que `/api/photos` |
-| GET | `/api/photos` | Lista por `sort_at DESC`. Filtros: `cursor`, `limit` (1–200, omissão 100), `type=image\|video`, `library_id`, `from`, `to` (YYYY-MM-DD), `favourite=1`, `place` |
+| GET | `/api/photos` | Lista por `sort_at DESC`. Filtros: `cursor`, `limit` (1–200, omissão 100), `type=image\|video`, `library_id`, `organization_id`, `from`, `to` (YYYY-MM-DD), `favourite=1`, `place` |
 | GET | `/api/photos/{id}` | Detalhe |
 | GET | `/api/photos/{id}/thumbnail/{size}` | `small\|medium\|large\|xlarge` → imagem (JPEG/PNG), `Cache-Control: private, max-age=86400` |
 | GET | `/api/photos/{id}/stream` | Vídeo → `302` para URL temporário do Microsoft 365 (suporta Range) |
@@ -164,7 +170,7 @@ A língua das mensagens segue `users.locale` (ou `Accept-Language` em rotas púb
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/search` | `q` + filtros (`type`, `from`, `to`, `folder`, `album_id`, `favourite`, `library_id`, `place`, `cursor`). Entende "setembro 2026", "2025", "vídeos", "favoritos", "videos", "september 2026". `meta.interpreted = { text, type, from, to, favourite }` |
+| GET | `/api/search` | `q` + filtros (`type`, `from`, `to`, `folder`, `album_id`, `favourite`, `library_id`, `organization_id`, `place`, `cursor`). Entende "setembro 2026", "2025", "vídeos", "favoritos", "videos", "september 2026". `meta.interpreted = { text, type, from, to, favourite }` |
 | GET | `/api/search/suggestions?q=` | `{ folders: [..], albums: [{id,name}], places: [..] }` |
 | GET | `/api/places` | `[{ "name": "Maputo", "admin1": "Maputo Cidade", "count": 120, "latitude": .., "longitude": .., "cover": Media }]` |
 | GET | `/api/libraries` | Bibliotecas acessíveis `[{ id, name, description, media_count, allow_writes }]` |
@@ -197,14 +203,19 @@ Links públicos: `https://<host>/s/<token>` (página React).
 |---|---|---|
 | GET | `/dashboard` | `{ photos, videos, albums, users, storage_bytes, last_sync_at, sync_errors_24h, unprocessed, running_jobs, status: "healthy"\|"degraded"\|"error", ai_enabled }` |
 | GET | `/libraries` | Todas as bibliotecas com roots e estado |
-| POST | `/libraries` | `{ name, description?, visibility: "organisation"\|"restricted", allow_public_links, allow_writes, roots: [{ drive_id, item_id }] }` |
+| POST | `/libraries` | `{ name, description?, visibility: "organisation"\|"restricted", allow_public_links, allow_writes, organization_id?, roots: [{ drive_id, item_id }] }`. `organization_id` = tenant dos drives (omissão: organização "casa") |
 | PUT | `/libraries/{id}` | Actualiza (inclui `enabled`) |
 | DELETE | `/libraries/{id}` | Remove da aplicação (não toca no OneDrive) |
 | POST | `/libraries/{id}/validate` | Valida acesso Graph → `{ ok, checks: [{ key, ok, message }] }` |
 | GET | `/libraries/{id}/access` / PUT | GET → `[{ principal_type: "user"\|"group", principal_id, display_name, role }]`; PUT body `{ "entries": [...] }` (ou `{ "access": [...] }`) |
+| GET | `/organizations` | `[{ id, name, slug, color, tenant_id, domains, enabled, trust_app_roles, consented_at, admin_consent_url, identities_count, drives_count }]` (só `super_admin`) |
+| POST | `/organizations` | `{ tenant: "tvsurdo.com" \| "<tenant-id>", name, color?, trust_app_roles? }` → 201; o tenant ID é descoberto pelo documento OpenID do domínio |
+| PATCH | `/organizations/{id}` | `{ name?, color?, enabled?, trust_app_roles?, domains? }` |
 | GET | `/graph/sites?q=` | Procura sites SharePoint por nome (token do admin) ou por URL `https://...sharepoint.com/sites/X` (identidade da aplicação, funciona com Sites.Selected) → `[{ id, name, web_url }]` |
 | GET | `/graph/sites/{siteId}/drives` | Bibliotecas de documentos do site |
 | GET | `/graph/drives/{driveId}/children?item_id=` | Sub-pastas `[{ id, name, child_count, path }]`; sem `item_id` (ou `root`) → raiz |
+
+As rotas `/graph/*` aceitam `organization_id` para navegar no tenant dessa organização (omissão: organização "casa").
 | GET | `/sync/status` | `{ running: [SyncJob], drives: [{ id, name, status, last_completed_at, last_error }] }` |
 | POST | `/sync` | `{ library_id?, full?: bool }` → inicia (202) |
 | GET | `/sync/jobs` | Histórico (paginado) |

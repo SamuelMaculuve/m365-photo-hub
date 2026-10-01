@@ -25,18 +25,20 @@ settings (chave/valor)
 
 | Tabela | Colunas principais | Notas |
 |---|---|---|
-| `users` | `entra_oid` (único), `tenant_id`, `name`, `email`, `upn`, `locale`, `role`, `role_source` (`entra`/`local`), `group_ids` (JSON), `is_active`, `last_login_at` | Soft delete. O utilizador é identificado pelo `oid`, não pelo email |
-| `oauth_tokens` | `user_id`, `access_token`, `refresh_token` (cifrados), `scopes`, `expires_at` | Único por `(user_id, provider)` |
+| `organizations` | `name`, `slug` (único), `tenant_id` (único), `domains` (JSON), `color`, `enabled`, `trust_app_roles`, `consented_at` | Tenants Microsoft 365 autorizados (lista branca do login e da sincronização) |
+| `users` | `name`, `email`, `upn`, `locale`, `role`, `role_source` (`entra`/`local`), `is_active`, `last_login_at` | Perfil. Soft delete. Pode ter várias contas Microsoft ligadas |
+| `user_identities` | `user_id`, `organization_id`, `tenant_id`, `entra_oid`, `email`, `upn`, `app_role`, `group_ids` (JSON), `groups_synced_at`, `last_login_at` | Único por `(tenant_id, entra_oid)` e por `(user_id, organization_id)`. A conta é identificada pelo `oid`, não pelo email |
+| `oauth_tokens` | `user_id`, `identity_id`, `access_token`, `refresh_token` (cifrados), `scopes`, `expires_at` | Único por `(identity_id, provider)`: um conjunto de tokens por conta ligada |
 | `sessions` | Driver `database` opcional; em produção usa-se Redis | |
 
 ### Armazenamento Microsoft
 
 | Tabela | Colunas principais | Notas |
 |---|---|---|
-| `drives` | `drive_id` (Graph, único), `drive_type` (`documentLibrary`/`business`/`personal`/`demo`), `site_id`, `auth_mode` (`app`/`delegated`), `owner_user_id` | |
+| `drives` | `organization_id`, `drive_id` (Graph, único), `drive_type` (`documentLibrary`/`business`/`personal`/`demo`), `site_id`, `auth_mode` (`app`/`delegated`), `owner_user_id` | |
 | `drive_sync_states` | `delta_link`, `resume_link` (checkpoint), `status`, `last_completed_at`, `last_error`, `items_seen` | Um cursor delta por drive |
 | `drive_folders` | `(drive_id, item_id)` único, `parent_item_id`, `name`, `is_root`, `is_deleted` | Hierarquia para calcular caminhos e âmbito (o delta não reenvia descendentes quando se move uma pasta) |
-| `libraries` | `name`, `slug`, `visibility` (`organisation`/`restricted`), `enabled`, `allow_public_links`, `allow_writes` | Soft delete |
+| `libraries` | `organization_id` (origem), `name`, `slug`, `visibility` (`organisation`/`restricted`), `enabled`, `allow_public_links`, `allow_writes` | Soft delete |
 | `library_roots` | `library_id`, `drive_id`, `root_item_id`, `root_path` | Único por `(drive_id, root_item_id)`. Várias raízes por biblioteca; a raiz mais próxima ganha |
 | `library_access` | `library_id`, `principal_type` (`user`/`group`), `principal_id` (oid Entra), `role` | |
 

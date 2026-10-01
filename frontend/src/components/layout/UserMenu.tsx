@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { OrganizationBadge } from '@/components/ui/organization-badge'
 
 export function initials(name: string): string {
   return name
@@ -39,6 +40,11 @@ export function UserMenu() {
           <span className="block truncate text-sm font-medium text-foreground">{user.name}</span>
           <span className="block truncate">{user.email}</span>
           <span className="mt-1 block">{t(`roles.${user.role}`)}</span>
+          {(user.identities?.length ?? 0) > 1 && (
+            <span className="mt-2 flex flex-wrap gap-1" aria-label={t('userMenu.linkedAccounts')}>
+              {user.identities?.map((i) => i.organization && <OrganizationBadge key={i.id} organization={i.organization} />)}
+            </span>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate('/settings')}>

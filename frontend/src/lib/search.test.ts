@@ -22,6 +22,13 @@ describe('search helpers', () => {
     expect(hasActiveFilters({ q: 'x', type: 'video' })).toBe(true)
   })
 
+  it('keeps the organisation filter in the URL', () => {
+    const f = { q: 'evento', organization_id: 3 }
+    expect(filtersFromSearchParams(searchParamsFromFilters(f))).toEqual(f)
+    expect(filtersFromSearchParams(new URLSearchParams('organization_id=abc'))).toEqual({})
+    expect(hasActiveFilters({ q: 'x', organization_id: 3 })).toBe(true)
+  })
+
   it('turns meta.interpreted into chips', () => {
     expect(interpretedChips({ text: 'formação', type: 'video', from: '2026-09-01', to: '2026-09-30', favourite: true })).toEqual([
       { kind: 'text', value: 'formação' },

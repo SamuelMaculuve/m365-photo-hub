@@ -36,6 +36,7 @@ const AdminLibrariesPage = lazy(() => import('@/pages/Admin/AdminLibrariesPage')
 const LibraryEditorPage = lazy(() => import('@/pages/Admin/LibraryEditorPage'))
 const AdminSyncPage = lazy(() => import('@/pages/Admin/AdminSyncPage'))
 const AdminUsersPage = lazy(() => import('@/pages/Admin/AdminUsersPage'))
+const AdminOrganizationsPage = lazy(() => import('@/pages/Admin/AdminOrganizationsPage'))
 const AdminAuditPage = lazy(() => import('@/pages/Admin/AdminAuditPage'))
 const AdminSettingsPage = lazy(() => import('@/pages/Admin/AdminSettingsPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/Admin/AdminErrorsPage'))
@@ -72,6 +73,7 @@ export const routes: RouteObject[] = [
               { path: 'libraries/new', element: page(LibraryEditorPage) },
               { path: 'libraries/:id', element: page(LibraryEditorPage) },
               { path: 'sync', element: page(AdminSyncPage) },
+              { path: 'organizations', element: page(AdminOrganizationsPage) },
               { path: 'users', element: page(AdminUsersPage) },
               { path: 'audit', element: page(AdminAuditPage) },
               { path: 'settings', element: page(AdminSettingsPage) },

@@ -28,8 +28,19 @@ function ListSkeleton() {
 
 const rowCls = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-surface-2'
 
-/** Assistente: procurar site → escolher drive → navegar pastas → adicionar raiz. */
-export function FolderPicker({ onAdd, selected }: { onAdd: (root: PickedRoot) => void; selected: PickedRoot[] }) {
+/**
+ * Assistente: procurar site → escolher drive → navegar pastas → adicionar raiz,
+ * no tenant da organização indicada (por omissão, a organização "casa").
+ */
+export function FolderPicker({
+  onAdd,
+  selected,
+  organizationId,
+}: {
+  onAdd: (root: PickedRoot) => void
+  selected: PickedRoot[]
+  organizationId?: number | null
+}) {
   const { t } = useTranslation()
   const [q, setQ] = useState('')
   const debounced = useDebouncedValue(q, 350)
@@ -37,10 +48,10 @@ export function FolderPicker({ onAdd, selected }: { onAdd: (root: PickedRoot) =>
   const [drive, setDrive] = useState<GraphDrive | null>(null)
   const [path, setPath] = useState<{ id: string; name: string }[]>([])
 
-  const sites = useGraphSites(site ? '' : debounced)
-  const drives = useGraphDrives(site?.id ?? null)
+  const sites = useGraphSites(site ? '' : debounced, organizationId)
+  const drives = useGraphDrives(site?.id ?? null, organizationId)
   const current = path[path.length - 1] ?? null
-  const children = useGraphChildren(drive?.id ?? null, current?.id ?? null)
+  const children = useGraphChildren(drive?.id ?? null, current?.id ?? null, organizationId)
 
   const isSelected = (driveId: string, itemId: string) => selected.some((r) => r.drive_id === driveId && r.item_id === itemId)
   const currentLabel = [site ? siteName(site) : '', drive?.name ?? '', ...path.map((p) => p.name)].filter(Boolean).join(' / ')

@@ -82,6 +82,8 @@ export interface MediaDetail extends Media {
   albums: { id: number; name: string }[]
   tags: { name: string; source: 'user' | 'ai' }[]
   library: { id: number; name: string } | null
+  /** Organização (tenant Microsoft 365) de onde vem o ficheiro. */
+  organization?: OrganizationSummary | null
   hidden_at: string | null
   can: MediaCan
   /** Metadados gerados por IA (separados dos originais). */
@@ -158,6 +160,40 @@ export interface AlbumInput {
 
 export type Role = 'super_admin' | 'photo_admin' | 'editor' | 'contributor' | 'viewer'
 
+/** Organização (tenant Microsoft 365) registada na plataforma. */
+export interface OrganizationSummary {
+  id: number
+  name: string
+  slug: string
+  color: string | null
+}
+
+/** Conta Microsoft ligada ao perfil (uma por organização). */
+export interface LinkedIdentity {
+  id: number
+  email: string | null
+  organization: OrganizationSummary | null
+  last_login_at: string | null
+}
+
+export interface AdminOrganization extends OrganizationSummary {
+  tenant_id: string
+  domains: string[]
+  enabled: boolean
+  trust_app_roles: boolean
+  consented_at: string | null
+  admin_consent_url: string
+  identities_count: number
+  drives_count: number
+}
+
+export interface AdminOrganizationInput {
+  tenant: string
+  name: string
+  color?: string | null
+  trust_app_roles?: boolean
+}
+
 export interface Permissions {
   admin: boolean
   manage_libraries: boolean
@@ -175,8 +211,12 @@ export interface CurrentUser {
   locale: 'pt' | 'en'
   role: Role
   permissions: Permissions
-  libraries: { id: number; name: string; role: string; allow_writes?: boolean }[]
+  libraries: { id: number; name: string; role: string; allow_writes?: boolean; organization_id?: number | null }[]
   features?: { semantic_search: boolean; faces?: boolean }
+  /** Contas Microsoft ligadas a este perfil. */
+  identities?: LinkedIdentity[]
+  /** Organizações com conteúdo visível (para o filtro). */
+  organizations?: OrganizationSummary[]
 }
 
 export interface UserSummary {
@@ -194,6 +234,7 @@ export interface AuthConfig {
 export interface PhotoFilters {
   type?: MediaType
   library_id?: number
+  organization_id?: number
   from?: string
   to?: string
   favourite?: boolean
@@ -256,6 +297,7 @@ export interface Library {
   name: string
   description: string | null
   media_count: number
+  organization?: OrganizationSummary | null
 }
 
 export type BulkAction = 'favorite' | 'unfavorite' | 'trash' | 'restore'
@@ -335,6 +377,7 @@ export interface LibraryRoot {
   path?: string | null
   root_path?: string | null
   drive_name?: string | null
+  organization_id?: number | null
 }
 
 export interface AdminLibrary {
@@ -350,6 +393,7 @@ export interface AdminLibrary {
   media_count?: number
   status?: string | null
   last_sync_at?: string | null
+  organization?: OrganizationSummary | null
   roots: LibraryRoot[]
 }
 
@@ -362,6 +406,8 @@ export interface AdminLibraryInput {
   allow_ai?: boolean
   allow_faces?: boolean
   enabled?: boolean
+  /** Tenant dos drives das raízes; por omissão, a organização "casa". */
+  organization_id?: number | null
   roots: { drive_id: string; item_id: string }[]
 }
 
@@ -464,6 +510,7 @@ export interface AdminUser {
   role: Role
   is_active: boolean
   last_login_at: string | null
+  organizations?: OrganizationSummary[]
 }
 
 export interface AdminSettings {

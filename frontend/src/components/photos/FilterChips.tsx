@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Chip } from '@/components/ui/chip'
-import type { MediaType } from '@/types'
+import { Select } from '@/components/ui/input'
+import type { MediaType, OrganizationSummary } from '@/types'
 
 export function TypeFilterChips({ value, onChange }: { value: MediaType | undefined; onChange: (v: MediaType | undefined) => void }) {
   const { t } = useTranslation()
@@ -17,5 +18,32 @@ export function TypeFilterChips({ value, onChange }: { value: MediaType | undefi
         </Chip>
       ))}
     </div>
+  )
+}
+
+/** Filtro por organização (tenant) — só aparece quando há conteúdo de mais de uma. */
+export function OrganizationFilter({
+  organizations,
+  value,
+  onChange,
+}: {
+  organizations: OrganizationSummary[]
+  value: number | undefined
+  onChange: (v: number | undefined) => void
+}) {
+  const { t } = useTranslation()
+  if (organizations.length < 2) return null
+  return (
+    <Select
+      aria-label={t('filters.organization')}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+      className="h-8 w-auto rounded-full py-0 text-sm"
+    >
+      <option value="">{t('filters.allOrganizations')}</option>
+      {organizations.map((o) => (
+        <option key={o.id} value={o.id}>{o.name}</option>
+      ))}
+    </Select>
   )
 }

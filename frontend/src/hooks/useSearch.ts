@@ -7,7 +7,7 @@ import { useDebouncedValue } from './useDebouncedValue'
 
 export function useSearch(filters: SearchFilters) {
   const hasQuery = Boolean(filters.q || filters.type || filters.from || filters.to || filters.folder ||
-    filters.album_id || filters.favourite || filters.place || filters.library_id)
+    filters.album_id || filters.favourite || filters.place || filters.library_id || filters.organization_id)
   return useInfiniteMedia(qk.search(filters), (cursor) => searchService.search(filters, cursor), hasQuery)
 }
 

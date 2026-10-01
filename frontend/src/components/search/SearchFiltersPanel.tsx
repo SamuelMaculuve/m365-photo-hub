@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SearchFilters } from '@/types'
 import { useAlbums } from '@/hooks/useAlbums'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { usePlaces } from '@/hooks/usePlaces'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select } from '@/components/ui/input'
@@ -17,6 +18,7 @@ export function SearchFiltersPanel({ value, onApply }: Props) {
   const [draft, setDraft] = useState<SearchFilters>(value)
   const albums = useAlbums()
   const places = usePlaces()
+  const organizations = useCurrentUser()?.organizations ?? []
   useEffect(() => setDraft(value), [value])
 
   const set = <K extends keyof SearchFilters>(k: K, v: SearchFilters[K]) => setDraft((d) => ({ ...d, [k]: v || undefined }))
@@ -62,6 +64,15 @@ export function SearchFiltersPanel({ value, onApply }: Props) {
           {(places.data ?? []).map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
         </Select>
       </div>
+      {organizations.length > 1 && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${id}-org`}>{t('filters.organization')}</Label>
+          <Select id={`${id}-org`} value={draft.organization_id ?? ''} onChange={(e) => set('organization_id', e.target.value ? Number(e.target.value) : undefined)}>
+            <option value="">{t('filters.allOrganizations')}</option>
+            {organizations.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </Select>
+        </div>
+      )}
       <label className="flex items-center gap-2 self-end pb-2 text-sm">
         <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={!!draft.favourite} onChange={(e) => set('favourite', e.target.checked)} />
         {t('filters.favouritesOnly')}

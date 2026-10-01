@@ -9,7 +9,7 @@ import { FieldError, Input, Label } from '@/components/ui/input'
 import { useErrorMessage } from '@/components/ui/states'
 import { APP_NAME, BrandMark } from '@/components/layout/Brand'
 
-const KNOWN_ERRORS = ['session_expired', 'access_denied', 'invalid_state', 'invalid_tenant', 'account_disabled', 'no_access']
+const KNOWN_ERRORS = ['session_expired', 'access_denied', 'invalid_state', 'invalid_tenant', 'identity_taken', 'account_disabled', 'no_access']
 
 function MicrosoftLogo() {
   return (

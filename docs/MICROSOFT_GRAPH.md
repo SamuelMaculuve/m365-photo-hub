@@ -7,11 +7,15 @@ bibliotecas OneDrive/SharePoint.
 
 1. **Entra ID → App registrations → New registration**
    - Nome: `Fotos da Organização`
-   - *Supported account types*: **Accounts in this organizational directory only** (single-tenant)
+   - *Supported account types*: **Accounts in any organizational directory** (multi-tenant), para que as
+     contas de várias organizações (ex.: `@h2n.org.mz`, `@tvsurdo.com`) possam entrar. Só entram os tenants
+     registados na aplicação (ver §1.1). Se já registou a aplicação como single-tenant, mude-o em
+     **Authentication → Supported account types**; o `client_id` e o segredo mantêm-se.
    - *Redirect URI* (plataforma **Web**, não SPA):
      - Produção: `https://fotos.organizacao.org/auth/microsoft/callback`
      - Desenvolvimento: `http://localhost:5173/auth/microsoft/callback` (passa pelo proxy do Vite)
-2. Anote o **Application (client) ID** → `MICROSOFT_CLIENT_ID` e o **Directory (tenant) ID** → `MICROSOFT_TENANT_ID`.
+2. Anote o **Application (client) ID** → `MICROSOFT_CLIENT_ID` e o **Directory (tenant) ID** → `MICROSOFT_TENANT_ID`
+   (o tenant "casa"). Mantenha `MICROSOFT_LOGIN_TENANT=organizations`.
 3. **Certificates & secrets → New client secret** → `MICROSOFT_CLIENT_SECRET`.
    - Guarde-o apenas no `.env` do servidor (permissões 600) ou num cofre de segredos.
    - Registe a data de expiração e planeie a rotação. Um certificado é preferível em produção
@@ -20,6 +24,28 @@ bibliotecas OneDrive/SharePoint.
    executado no servidor.
 5. **Token configuration → Add groups claim** → *Security groups*, emitido como **Group ID** no ID token.
    Com demasiados grupos (mais de 200), o Entra envia um *overage* e a aplicação pede os grupos ao Graph.
+
+### 1.1 Acrescentar outra organização (tenant)
+
+Cada organização tem de ser registada na aplicação e dar o consentimento de administrador no seu tenant:
+
+1. **Registar**: em **Administração → Organizações** indique o domínio (ex.: `tvsurdo.com`) e o nome, ou no servidor:
+   ```bash
+   php artisan photos:org:add tvsurdo.com --name="TV Surdo" --color="#E3008C"
+   ```
+   O tenant ID é descoberto a partir do documento OpenID público do domínio.
+2. **Consentimento**: um administrador global desse tenant abre o link **Dar consentimento**
+   (`https://login.microsoftonline.com/{tenant}/adminconsent?client_id=…`). Isto cria o *service principal*
+   da aplicação nesse tenant e concede as permissões (delegadas e `Sites.Selected`). Se estiver com a
+   sessão iniciada como `super_admin`, o regresso marca a organização como consentida.
+3. **Sites**: conceda `Sites.Selected` aos sites desse tenant (§2.3), usando o mesmo `MICROSOFT_CLIENT_ID`,
+   e crie as bibliotecas escolhendo essa organização.
+4. **Contas**: cada pessoa entra com uma das suas contas e liga as restantes em
+   **Definições → Contas ligadas** (as contas de tenants diferentes ficam no mesmo perfil).
+
+**App Roles noutros tenants**: as atribuições de App Roles são feitas pelo administrador de cada tenant.
+Por omissão só se confia nas do tenant "casa" (`trust_app_roles`). Nos outros tenants os utilizadores
+entram como `viewer`, salvo se activar "Confiar nas App Roles deste tenant" ou fixar o papel localmente.
 
 ### App Roles (papéis globais)
 
@@ -69,6 +95,8 @@ A sincronização usa a identidade da aplicação, e não o token de um administ
 ### 2.3 Conceder acesso a um site (Sites.Selected)
 
 Depois de dar consentimento de administrador a `Sites.Selected` (aplicação), conceda o acesso a cada site.
+Com várias organizações, repita em **cada tenant**: o pedido é feito por um administrador desse tenant e
+a aplicação só vê os sites concedidos nesse tenant.
 Um administrador com `Sites.FullControl.All` pode fazê-lo pelo Graph Explorer ou pelo PowerShell:
 
 ```http

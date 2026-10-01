@@ -49,7 +49,8 @@
   },
   "userMenu": {
     "open": "Menu do utilizador ({{name}})",
-    "logout": "Terminar sessão"
+    "logout": "Terminar sessão",
+    "linkedAccounts": "Contas ligadas"
   },
   "roles": {
     "super_admin": "Super administrador",
@@ -75,12 +76,14 @@
     "graph_throttled": "O Microsoft 365 está a limitar pedidos neste momento. Tente novamente dentro de alguns instantes.",
     "network_error": "Não foi possível contactar o servidor. Verifique a sua ligação.",
     "server_error": "Ocorreu um erro inesperado no servidor. Tente novamente mais tarde.",
-    "unknown": "Ocorreu um erro inesperado."
+    "unknown": "Ocorreu um erro inesperado.",
+    "account_not_linked": "Para esta acção precisa de ligar a sua conta Microsoft da organização a que o conteúdo pertence (Definições › Contas ligadas).",
+    "identity_taken": "Esta conta Microsoft já está ligada a outro perfil."
   },
   "login": {
     "subtitle": "As fotografias e vídeos da organização, organizados num só lugar.",
     "microsoft": "Entrar com a Microsoft",
-    "hint": "Utilize a sua conta profissional da organização.",
+    "hint": "Utilize a sua conta profissional de uma das organizações registadas.",
     "notConfigured": "O início de sessão com a Microsoft ainda não está configurado neste servidor.",
     "devTitle": "Modo de desenvolvimento",
     "devEmail": "Email do utilizador",
@@ -89,10 +92,11 @@
       "session_expired": "A sua sessão expirou. Entre novamente.",
       "access_denied": "O início de sessão foi cancelado ou recusado.",
       "invalid_state": "O pedido de início de sessão expirou. Tente novamente.",
-      "invalid_tenant": "Esta conta não pertence à organização.",
+      "invalid_tenant": "Esta organização não está registada na plataforma.",
       "account_disabled": "A sua conta está desactivada nesta aplicação. Contacte o administrador.",
       "no_access": "Não tem acesso a esta aplicação. Contacte o administrador.",
-      "generic": "Não foi possível iniciar sessão. Tente novamente."
+      "generic": "Não foi possível iniciar sessão. Tente novamente.",
+      "identity_taken": "Esta conta Microsoft já está ligada a outro perfil."
     }
   },
   "photos": {
@@ -126,7 +130,9 @@
     "any": "Qualquer",
     "favouritesOnly": "Só favoritos",
     "apply": "Aplicar",
-    "clear": "Limpar"
+    "clear": "Limpar",
+    "organization": "Organização",
+    "allOrganizations": "Todas as organizações"
   },
   "selection": {
     "toolbar": "Acções da selecção",
@@ -189,7 +195,8 @@
       "people": "{{count}} pessoa(s) visível(eis)",
       "disclaimer": "Conteúdo gerado automaticamente; pode conter erros."
     },
-    "people": "Pessoas"
+    "people": "Pessoas",
+    "organization": "Organização"
   },
   "albums": {
     "title": "Álbuns",
@@ -408,7 +415,26 @@
     "libraries": "Bibliotecas a que tenho acesso",
     "noLibraries": "Ainda não tem acesso a nenhuma biblioteca.",
     "itemCount_one": "{{formatted}} item",
-    "itemCount_other": "{{formatted}} itens"
+    "itemCount_other": "{{formatted}} itens",
+    "accounts": {
+      "title": "Contas ligadas",
+      "body": "Ligue as suas contas Microsoft de outras organizações para ver tudo num só lugar e aceder ao conteúdo com as permissões de cada uma.",
+      "link": "Ligar outra conta Microsoft",
+      "none": "Ainda não há contas Microsoft ligadas a este perfil.",
+      "lastUsed": "Última utilização: {{date}}",
+      "unlink": "Desligar",
+      "unlinkFor": "Desligar a conta {{email}}",
+      "linked": "Conta ligada.",
+      "unlinked": "Conta desligada.",
+      "errors": {
+        "identity_taken": "Esta conta Microsoft já está ligada a outro perfil, ou o seu perfil já tem uma conta nesta organização.",
+        "invalid_tenant": "Esta organização não está registada na plataforma. Peça ao administrador para a adicionar.",
+        "access_denied": "A ligação da conta foi cancelada.",
+        "invalid_state": "O pedido expirou. Tente novamente.",
+        "account_disabled": "O seu perfil está desactivado nesta aplicação.",
+        "login_failed": "Não foi possível ligar a conta. Tente novamente."
+      }
+    }
   },
   "upload": {
     "button": "Carregar",
@@ -434,7 +460,8 @@
       "users": "Utilizadores",
       "audit": "Auditoria",
       "settings": "Definições",
-      "errors": "Erros"
+      "errors": "Erros",
+      "organizations": "Organizações"
     },
     "health": {
       "healthy": "Óptimo",
@@ -471,11 +498,11 @@
       "description": "Descrição",
       "visibilityLabel": "Visibilidade",
       "visibility": {
-        "organisation": "Toda a organização",
+        "organisation": "Todas as organizações",
         "restricted": "Restrita"
       },
       "visibilityHint": {
-        "organisation": "Qualquer utilizador autenticado da organização pode ver.",
+        "organisation": "Qualquer utilizador autenticado de qualquer organização registada pode ver.",
         "restricted": "Só utilizadores e grupos com acesso explícito podem ver."
       },
       "publicLinks": "Permitir links públicos",
@@ -492,7 +519,10 @@
       "ai": "Permitir análise por IA",
       "aiHint": "Envia miniaturas destas fotografias para o fornecedor de IA (NVIDIA) para gerar descrições, etiquetas, texto e pesquisa por significado. Não active em fotografias sensíveis sem aprovação.",
       "faces": "Permitir reconhecimento facial",
-      "facesHint": "Agrupa as fotografias desta biblioteca por rosto. O processamento é local, no servidor da organização (nada é enviado para fora), mas são dados biométricos: exige aprovação e consentimento."
+      "facesHint": "Agrupa as fotografias desta biblioteca por rosto. O processamento é local, no servidor da organização (nada é enviado para fora), mas são dados biométricos: exige aprovação e consentimento.",
+      "organization": "Organização (tenant)",
+      "organizationDefault": "Organização principal",
+      "organizationHint": "As pastas são procuradas no Microsoft 365 desta organização. Mudar de organização limpa as pastas escolhidas."
     },
     "wizard": {
       "steps": "Passos",
@@ -638,6 +668,28 @@
       "purgeConfirmTitle": "Apagar todos os dados faciais?",
       "purgeConfirmBody": "Todos os rostos detectados, pessoas e nomes serão apagados permanentemente. Se o reconhecimento continuar activo, as fotografias serão analisadas de novo.",
       "purged": "Dados faciais apagados."
+    },
+    "organizations": {
+      "addTitle": "Adicionar organização",
+      "addBody": "Indique o domínio verificado (ex.: tvsurdo.com) ou o tenant ID. Depois, um administrador global desse tenant tem de dar o consentimento.",
+      "tenant": "Domínio ou tenant ID",
+      "name": "Nome",
+      "add": "Adicionar",
+      "created": "Organização adicionada. Falta o consentimento de administrador.",
+      "saved": "Organização actualizada.",
+      "emptyTitle": "Ainda não há organizações",
+      "emptyBody": "Adicione a primeira organização para permitir o início de sessão.",
+      "counts": "{{accounts}} contas · {{drives}} armazenamentos",
+      "consentedAt": "Consentimento dado em {{date}}",
+      "consentPending": "Consentimento de administrador pendente",
+      "grantConsent": "Dar consentimento",
+      "copyConsent": "Copiar link de consentimento",
+      "consented": "Consentimento registado.",
+      "consentError": "O consentimento não foi concluído.",
+      "enabled": "Activa",
+      "enabledHint": "Organizações inactivas não podem entrar nem sincronizar; o conteúdo já indexado mantém-se.",
+      "trustRoles": "Confiar nas App Roles deste tenant",
+      "trustRolesHint": "Os papéis atribuídos no Entra ID deste tenant passam a papéis globais. Active só em tenants que administra."
     }
   },
   "location": {

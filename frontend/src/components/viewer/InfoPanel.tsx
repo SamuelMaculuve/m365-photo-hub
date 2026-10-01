@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Calendar, Camera, ExternalLink, FolderOpen, UserRound, HardDrive, Image as ImageIcon, Library, MapPin, Sparkles, Tag, Type, Users, X, Album as AlbumIcon } from 'lucide-react'
+import { Building2, Calendar, Camera, ExternalLink, FolderOpen, UserRound, HardDrive, Image as ImageIcon, Library, MapPin, Sparkles, Tag, Type, Users, X, Album as AlbumIcon } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { Media, MediaDetail, MediaLocation } from '@/types'
 import { formatBytes, formatDateTime, formatNumber, intlLocale } from '@/lib/format'
 import { MiniMap, type MiniMapVariant } from '@/components/map'
 import { Button } from '@/components/ui/button'
+import { OrganizationBadge } from '@/components/ui/organization-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/ui/states'
 import { PeopleChips } from '@/components/people/PeopleChips'
@@ -171,6 +172,11 @@ export function InfoPanel({ item, detail, loading, error, locale, onClose }: Inf
           {cam && <Row icon={<Camera />} label={t('viewer.camera')}>{cam}</Row>}
           {detail?.folder_path && <Row icon={<FolderOpen />} label={t('viewer.folder')}>{detail.folder_path}</Row>}
           {detail?.library && <Row icon={<Library />} label={t('viewer.library')}>{detail.library.name}</Row>}
+          {detail?.organization && (
+            <Row icon={<Building2 />} label={t('viewer.organization')}>
+              <OrganizationBadge organization={detail.organization} />
+            </Row>
+          )}
           {(detail?.location || (detail && canEditPeople)) && (
             <Row icon={<MapPin />} label={t('viewer.location')}>
               {detail?.location ? (

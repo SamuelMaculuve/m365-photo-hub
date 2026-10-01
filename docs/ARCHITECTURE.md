@@ -109,23 +109,26 @@ Nunca se percorre o OneDrive num pedido HTTP de página; todas as leituras de li
 
 ## C. Fluxo de autenticação
 
-**Aplicação single-tenant** registada no Entra ID, *confidential client*, **Authorization Code Flow + PKCE**, executado inteiramente no backend.
+**Aplicação multi-tenant** registada no Entra ID (tenant "casa"), *confidential client*, **Authorization Code Flow + PKCE**, executado inteiramente no backend. Várias organizações (tenants Microsoft 365) partilham **um acervo comum**; só entram os tenants registados na tabela `organizations`.
 
 ```text
-1. Browser → GET /auth/microsoft/redirect
-2. Laravel gera state + nonce + PKCE (guardados na sessão) → 302 login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
-3. Utilizador autentica-se (MFA/Acesso Condicional aplicados pelo Entra) e consente
+1. Browser → GET /auth/microsoft/redirect   (ou /auth/microsoft/link para ligar outra conta ao perfil actual)
+2. Laravel gera state + nonce + PKCE (guardados na sessão) → 302 login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+3. Utilizador autentica-se no seu tenant (MFA/Acesso Condicional aplicados pelo Entra) e consente
 4. Entra → GET /auth/microsoft/callback?code&state
 5. Laravel valida state, troca code (+ client_secret ou certificado) por id_token + access_token + refresh_token
-6. Valida id_token: assinatura (JWKS), iss, aud, tid == MICROSOFT_TENANT_ID, nonce, exp
-7. Upsert do utilizador por `oid` (nunca por email/UPN, que podem mudar)
-8. Lê claims `roles` (App Roles) e `groups` (se overage → Graph /me/transitiveMemberOf)
-9. Guarda tokens cifrados (cast `encrypted`, APP_KEY) em `oauth_tokens`
+6. Valida id_token: assinatura (JWKS), aud, nonce, exp, iss == {authority}/{tid}/v2.0 e tid ∈ organizations activas
+7. Encontra/cria a conta (`user_identities`) por (tid, oid) — nunca por email/UPN; no fluxo de ligação junta-a ao perfil com sessão
+8. Lê claims `roles` (App Roles, só em organizações com trust_app_roles) e `groups` (se overage → Graph /me/transitiveMemberOf)
+9. Guarda tokens cifrados (cast `encrypted`, APP_KEY) em `oauth_tokens`, um conjunto por conta ligada
 10. Regenera a sessão; cookie HttpOnly, Secure, SameSite=Lax → redirect para o SPA
 ```
 
+- **Perfis e contas**: um `user` (perfil) tem uma ou mais `user_identities` (uma por organização). Os grupos e os `oid` de todas as contas contam para o acesso às bibliotecas; o papel global é o maior das App Roles das contas em organizações de confiança (`trust_app_roles`), para que o administrador de um tenant parceiro não se possa promover a `super_admin`.
+- **Identidade da aplicação por tenant**: o mesmo `client_id` tem um service principal em cada tenant (criado pelo consentimento de administrador); o token app-only é pedido a `/{tenant}/oauth2/v2.0/token` e guardado em `graph:app_token:{tenant}`. Cada drive pertence a uma organização e é sempre lido com o token desse tenant.
+
 - **SPA ↔ API**: Sanctum em modo *stateful*; o SPA e a API partilham o domínio de topo (ex.: `fotos.org.mz` e `api.fotos.org.mz`, ou o mesmo host com `/api`). O frontend só vê `/api/users/me`.
-- **Renovação de tokens**: `GraphAuthService::accessTokenFor($user)` renova automaticamente com margem de 5 min, com lock Redis para evitar renovações concorrentes; os refresh tokens rodam e são substituídos.
+- **Renovação de tokens**: `GraphAuthService::identityAccessToken($identity)` renova (no tenant da conta) automaticamente com margem de 5 min, com lock Redis para evitar renovações concorrentes; os refresh tokens rodam e são substituídos.
 - **Revogação**: se a renovação falhar (`invalid_grant`), a sessão é invalidada e o utilizador volta a autenticar-se.
 - **Identidade da aplicação (app-only)**: token obtido por client credentials, preferencialmente com **certificado** em vez de segredo em produção; em cache no Redis até expirar.
 - **Logout**: destrói a sessão local e redireciona para o endpoint de logout do Entra (opcional).
@@ -379,6 +382,7 @@ Sem resposta explícita, avançou-se com as recomendações:
 | 4. Domínios | **Mesma origem** (Nginx serve o SPA e encaminha `/api`, `/auth` e `/sanctum`) |
 | 5. Escrita | Implementada e **desligada por omissão** (`MICROSOFT_ENABLE_WRITES` + `allow_writes` por biblioteca): upload directo para a Microsoft e envio para a Reciclagem do M365 |
 | Ambiente | **Sem Docker**: MAMP (PHP 8.3 + MySQL 8), Redis via Homebrew, Node 24 |
+| Várias organizações (2026-09-30) | **Acervo comum**: um registo multi-tenant; cada tenant é uma `organization` (lista branca); cada pessoa liga as suas contas Microsoft (uma por organização) ao mesmo perfil. Bibliotecas "Todas as organizações" são visíveis a todos os utilizadores de todas as organizações; as restritas continuam por utilizador/grupo. App Roles só são aceites de tenants com `trust_app_roles` |
 
 ## J. Estado da implementação
 
@@ -397,11 +401,12 @@ Sem resposta explícita, avançou-se com as recomendações:
 | M12 Administração | ✅ | Painel, bibliotecas, acessos, sincronização, utilizadores, auditoria, definições, erros |
 | M13 Escrita | ✅ (desligada por omissão) | Upload por sessão de upload; Reciclagem M365 |
 | M14 Produção | ✅ documentação | `deploy/` (Nginx, Supervisor, cron) e `DEPLOYMENT.md`. Não executado num servidor real |
+| M16 Várias organizações | ✅ | `organizations`, `user_identities`, tokens app-only por tenant, ligação de contas, filtro por organização, página Admin › Organizações (`OrganizationTest`, `AuthTest`). **Não testado contra tenants reais** |
 | M15 IA | 🟡 abstracção | `MediaAnalysisService` + `AnalysisProvider` (`NullProvider`); sem fornecedor real |
 
 ### Por fazer / limitações conhecidas
 
-- Validar contra um **tenant Microsoft 365 real** (registo, Sites.Selected, sincronização de uma biblioteca grande).
+- Validar contra um **tenant Microsoft 365 real** (registo, Sites.Selected, sincronização de uma biblioteca grande) e o fluxo **multi-tenant** (consentimento noutro tenant, ligação de contas).
 - **Pessoas / reconhecimento facial**: só a página informativa e a definição `faces_enabled`; sem modelo.
 - **Mapa** em "Locais": lista de cartões com contagens (sem mapa interactivo).
 - **Webhooks** do Graph para sincronização quase em tempo real (hoje: delta a cada 10 min).

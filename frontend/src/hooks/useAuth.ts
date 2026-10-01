@@ -43,6 +43,14 @@ export function useUpdateLocale() {
   })
 }
 
+export function useUnlinkIdentity() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: authService.unlinkIdentity,
+    onSuccess: (user) => qc.setQueryData(qk.me, user),
+  })
+}
+
 export function useDevLogin() {
   return useMutation({
     mutationFn: authService.devLogin,

@@ -1,7 +1,14 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminService, type AuditFilters } from '@/services/admin'
 import { qk } from '@/lib/queryKeys'
-import type { AdminLibraryInput, AdminSettings, LibraryAccessEntry, Role } from '@/types'
+import type {
+  AdminLibraryInput,
+  AdminOrganization,
+  AdminOrganizationInput,
+  AdminSettings,
+  LibraryAccessEntry,
+  Role,
+} from '@/types'
 
 export const SYNC_POLL_MS = 3000
 
@@ -57,22 +64,50 @@ export function useSaveLibraryAccess(id: number) {
   })
 }
 
-export function useGraphSites(q: string) {
-  return useQuery({ queryKey: qk.admin.sites(q), queryFn: () => adminService.graphSites(q), enabled: q.trim().length >= 2 })
+export function useAdminOrganizations(enabled = true) {
+  return useQuery({ queryKey: qk.admin.organizations, queryFn: adminService.organizations, enabled })
 }
 
-export function useGraphDrives(siteId: string | null) {
+export function useCreateOrganization() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: AdminOrganizationInput) => adminService.createOrganization(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.admin.organizations }),
+  })
+}
+
+export function useUpdateOrganization() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...input }: Partial<Omit<AdminOrganization, 'id'>> & { id: number }) =>
+      adminService.updateOrganization(id, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.admin.organizations })
+      void qc.invalidateQueries({ queryKey: qk.me })
+    },
+  })
+}
+
+export function useGraphSites(q: string, organizationId?: number | null) {
   return useQuery({
-    queryKey: qk.admin.drives(siteId ?? ''),
-    queryFn: () => adminService.graphDrives(siteId as string),
+    queryKey: qk.admin.sites(q, organizationId),
+    queryFn: () => adminService.graphSites(q, organizationId),
+    enabled: q.trim().length >= 2,
+  })
+}
+
+export function useGraphDrives(siteId: string | null, organizationId?: number | null) {
+  return useQuery({
+    queryKey: qk.admin.drives(siteId ?? '', organizationId),
+    queryFn: () => adminService.graphDrives(siteId as string, organizationId),
     enabled: !!siteId,
   })
 }
 
-export function useGraphChildren(driveId: string | null, itemId: string | null) {
+export function useGraphChildren(driveId: string | null, itemId: string | null, organizationId?: number | null) {
   return useQuery({
-    queryKey: qk.admin.children(driveId ?? '', itemId),
-    queryFn: () => adminService.graphChildren(driveId as string, itemId),
+    queryKey: qk.admin.children(driveId ?? '', itemId, organizationId),
+    queryFn: () => adminService.graphChildren(driveId as string, itemId, organizationId),
     enabled: !!driveId,
   })
 }

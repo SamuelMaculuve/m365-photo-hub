@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Folder, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { AdminLibraryInput } from '@/types'
-import { useAdminLibraries, useSaveLibrary } from '@/hooks/useAdmin'
+import { useAdminLibraries, useAdminOrganizations, useSaveLibrary } from '@/hooks/useAdmin'
+import { useCurrentUser } from '@/hooks/useAuth'
 import { ApiError } from '@/services/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,9 @@ export default function LibraryEditorPage() {
   const libraries = useAdminLibraries()
   const existing = libraryId ? libraries.data?.find((l) => l.id === libraryId) : undefined
   const save = useSaveLibrary(libraryId)
+  const me = useCurrentUser()
+  const organizations = useAdminOrganizations(!!me?.permissions.manage_libraries)
+  const activeOrgs = (organizations.data ?? []).filter((o) => o.enabled)
 
   const [step, setStep] = useState<Step>('roots')
   const [roots, setRoots] = useState<PickedRoot[]>([])
@@ -54,6 +58,8 @@ export default function LibraryEditorPage() {
   const [allowAi, setAllowAi] = useState(false)
   const [allowFaces, setAllowFaces] = useState(false)
   const [enabled, setEnabled] = useState(true)
+  // Todas as raízes de uma biblioteca pertencem ao mesmo tenant. null = organização "casa".
+  const [organizationId, setOrganizationId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!existing) return
@@ -65,6 +71,7 @@ export default function LibraryEditorPage() {
     setAllowAi(existing.allow_ai ?? false)
     setAllowFaces(existing.allow_faces ?? false)
     setEnabled(existing.enabled)
+    setOrganizationId(existing.organization?.id ?? null)
     setRoots(existing.roots.map((r) => ({ drive_id: r.drive_id, item_id: r.item_id, label: r.root_path || r.path || `${r.drive_name ?? r.drive_id} · ${r.item_id}` })))
   }, [existing])
 
@@ -84,6 +91,7 @@ export default function LibraryEditorPage() {
       allow_ai: allowAi,
       allow_faces: allowFaces,
       roots: roots.map(({ drive_id, item_id }) => ({ drive_id, item_id })),
+      ...(organizationId ? { organization_id: organizationId } : {}),
       ...(isEdit ? { enabled } : {}),
     }
     save.mutate(input, {
@@ -114,7 +122,27 @@ export default function LibraryEditorPage() {
           ))}
         </ul>
       )}
-      <FolderPicker selected={roots} onAdd={(r) => setRoots([...roots, r])} />
+      {activeOrgs.length > 1 && (
+        <div className="flex max-w-xs flex-col gap-1.5">
+          <Label htmlFor={`${id}-org`}>{t('admin.libraries.organization')}</Label>
+          <Select
+            id={`${id}-org`}
+            value={organizationId ?? ''}
+            onChange={(e) => {
+              // As pastas escolhidas pertencem ao tenant anterior: mudar de organização recomeça a escolha.
+              setOrganizationId(e.target.value ? Number(e.target.value) : null)
+              setRoots([])
+            }}
+          >
+            <option value="">{t('admin.libraries.organizationDefault')}</option>
+            {activeOrgs.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </Select>
+          <p className="text-xs text-muted">{t('admin.libraries.organizationHint')}</p>
+        </div>
+      )}
+      <FolderPicker key={organizationId ?? 'home'} organizationId={organizationId} selected={roots} onAdd={(r) => setRoots([...roots, r])} />
       <FieldError message={apiErr?.fieldError('roots')} />
     </Card>
   )

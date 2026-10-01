@@ -10,11 +10,18 @@
 
 ## Autenticação
 
-- Microsoft Entra ID, *single-tenant*, **Authorization Code Flow + PKCE (S256)** com `state` e `nonce`,
+- Microsoft Entra ID, *multi-tenant* com lista branca, **Authorization Code Flow + PKCE (S256)** com `state` e `nonce`,
   executado no servidor (confidential client).
-- O `id_token` é validado: assinatura (JWKS do tenant, com renovação se as chaves rodarem), `iss`, `aud`,
-  `tid` igual ao tenant configurado, `nonce` e expiração.
-- Os utilizadores são identificados pelo `oid` (imutável), nunca pelo email.
+- O `id_token` é validado: assinatura (JWKS, com renovação se as chaves rodarem), `aud`, `nonce`, expiração,
+  `iss` igual a `{authority}/{tid}/v2.0` e `tid` de uma organização **registada e activa** (tabela `organizations`).
+  Contas de qualquer outro tenant são recusadas (`invalid_tenant`).
+- As contas são identificadas por `(tid, oid)` (imutável), nunca pelo email. Ligar uma conta a um perfil exige
+  sessão iniciada nesse perfil e um novo login Microsoft com essa conta; não há ligação automática por email.
+- **Acervo comum entre organizações** (decisão explícita): as bibliotecas "Todas as organizações" são visíveis
+  a qualquer utilizador de qualquer organização registada. O alcance da aplicação em cada tenant continua
+  limitado pelo `Sites.Selected` (só os sites concedidos pelo administrador desse tenant).
+- **App Roles**: só contam as de organizações com `trust_app_roles` (por omissão, apenas o tenant "casa"),
+  para que o administrador de um tenant parceiro não se possa atribuir `super_admin` no seu próprio Entra ID.
 - Os tokens delegados ficam **cifrados em repouso** (cast `encrypted` com `APP_KEY`) e ocultos na serialização.
 - A renovação usa um lock Redis por utilizador. Com `invalid_grant`, o token é apagado e a sessão termina,
   obrigando a novo login.

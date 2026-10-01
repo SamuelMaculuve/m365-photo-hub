@@ -49,7 +49,8 @@
   },
   "userMenu": {
     "open": "User menu ({{name}})",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "linkedAccounts": "Linked accounts"
   },
   "roles": {
     "super_admin": "Super administrator",
@@ -75,12 +76,14 @@
     "graph_throttled": "Microsoft 365 is throttling requests right now. Please try again shortly.",
     "network_error": "Couldn't reach the server. Check your connection.",
     "server_error": "An unexpected server error occurred. Please try again later.",
-    "unknown": "An unexpected error occurred."
+    "unknown": "An unexpected error occurred.",
+    "account_not_linked": "To do this you need to link your Microsoft account from the organisation that owns the content (Settings › Linked accounts).",
+    "identity_taken": "This Microsoft account is already linked to another profile."
   },
   "login": {
     "subtitle": "Your organisation's photos and videos, organised in one place.",
     "microsoft": "Sign in with Microsoft",
-    "hint": "Use your organisation work account.",
+    "hint": "Use your work account from one of the registered organisations.",
     "notConfigured": "Microsoft sign-in isn't configured on this server yet.",
     "devTitle": "Development mode",
     "devEmail": "User email",
@@ -89,10 +92,11 @@
       "session_expired": "Your session has expired. Please sign in again.",
       "access_denied": "Sign-in was cancelled or denied.",
       "invalid_state": "The sign-in request expired. Please try again.",
-      "invalid_tenant": "This account doesn't belong to the organisation.",
+      "invalid_tenant": "This organisation is not registered on the platform.",
       "account_disabled": "Your account is disabled in this app. Contact your administrator.",
       "no_access": "You don't have access to this app. Contact your administrator.",
-      "generic": "Couldn't sign in. Please try again."
+      "generic": "Couldn't sign in. Please try again.",
+      "identity_taken": "This Microsoft account is already linked to another profile."
     }
   },
   "photos": {
@@ -126,7 +130,9 @@
     "any": "Any",
     "favouritesOnly": "Favourites only",
     "apply": "Apply",
-    "clear": "Clear"
+    "clear": "Clear",
+    "organization": "Organisation",
+    "allOrganizations": "All organisations"
   },
   "selection": {
     "toolbar": "Selection actions",
@@ -189,7 +195,8 @@
       "people": "{{count}} visible person(s)",
       "disclaimer": "Automatically generated content; may contain mistakes."
     },
-    "people": "People"
+    "people": "People",
+    "organization": "Organisation"
   },
   "albums": {
     "title": "Albums",
@@ -408,7 +415,26 @@
     "libraries": "Libraries I can access",
     "noLibraries": "You don't have access to any library yet.",
     "itemCount_one": "{{formatted}} item",
-    "itemCount_other": "{{formatted}} items"
+    "itemCount_other": "{{formatted}} items",
+    "accounts": {
+      "title": "Linked accounts",
+      "body": "Link your Microsoft accounts from other organisations to see everything in one place and access content with each account's permissions.",
+      "link": "Link another Microsoft account",
+      "none": "No Microsoft accounts are linked to this profile yet.",
+      "lastUsed": "Last used: {{date}}",
+      "unlink": "Unlink",
+      "unlinkFor": "Unlink account {{email}}",
+      "linked": "Account linked.",
+      "unlinked": "Account unlinked.",
+      "errors": {
+        "identity_taken": "This Microsoft account is already linked to another profile, or your profile already has an account in this organisation.",
+        "invalid_tenant": "This organisation is not registered on the platform. Ask the administrator to add it.",
+        "access_denied": "Linking was cancelled.",
+        "invalid_state": "The request expired. Please try again.",
+        "account_disabled": "Your profile is disabled in this application.",
+        "login_failed": "The account could not be linked. Please try again."
+      }
+    }
   },
   "upload": {
     "button": "Upload",
@@ -434,7 +460,8 @@
       "users": "Users",
       "audit": "Audit",
       "settings": "Settings",
-      "errors": "Errors"
+      "errors": "Errors",
+      "organizations": "Organisations"
     },
     "health": {
       "healthy": "Healthy",
@@ -471,11 +498,11 @@
       "description": "Description",
       "visibilityLabel": "Visibility",
       "visibility": {
-        "organisation": "Whole organisation",
+        "organisation": "All organisations",
         "restricted": "Restricted"
       },
       "visibilityHint": {
-        "organisation": "Any signed-in user in the organisation can view.",
+        "organisation": "Any signed-in user from any registered organisation can see it.",
         "restricted": "Only users and groups with explicit access can view."
       },
       "publicLinks": "Allow public links",
@@ -492,7 +519,10 @@
       "ai": "Allow AI analysis",
       "aiHint": "Sends thumbnails of these photos to the AI provider (NVIDIA) to generate captions, tags, text and semantic search. Do not enable for sensitive photos without approval.",
       "faces": "Allow face recognition",
-      "facesHint": "Groups this library's photos by face. Processing is local, on the organisation's server (nothing is sent outside), but it is biometric data: it requires approval and consent."
+      "facesHint": "Groups this library's photos by face. Processing is local, on the organisation's server (nothing is sent outside), but it is biometric data: it requires approval and consent.",
+      "organization": "Organisation (tenant)",
+      "organizationDefault": "Main organisation",
+      "organizationHint": "Folders are browsed in this organisation's Microsoft 365. Changing organisation clears the chosen folders."
     },
     "wizard": {
       "steps": "Steps",
@@ -638,6 +668,28 @@
       "purgeConfirmTitle": "Delete all face data?",
       "purgeConfirmBody": "All detected faces, people and names will be permanently deleted. If recognition stays enabled, photos will be analysed again.",
       "purged": "Face data deleted."
+    },
+    "organizations": {
+      "addTitle": "Add organisation",
+      "addBody": "Enter the verified domain (e.g. tvsurdo.com) or the tenant ID. A global administrator of that tenant must then grant consent.",
+      "tenant": "Domain or tenant ID",
+      "name": "Name",
+      "add": "Add",
+      "created": "Organisation added. Admin consent is still required.",
+      "saved": "Organisation updated.",
+      "emptyTitle": "No organisations yet",
+      "emptyBody": "Add the first organisation to allow sign-in.",
+      "counts": "{{accounts}} accounts · {{drives}} storages",
+      "consentedAt": "Consent granted on {{date}}",
+      "consentPending": "Admin consent pending",
+      "grantConsent": "Grant consent",
+      "copyConsent": "Copy consent link",
+      "consented": "Consent recorded.",
+      "consentError": "Consent was not completed.",
+      "enabled": "Enabled",
+      "enabledHint": "Disabled organisations cannot sign in or sync; already indexed content is kept.",
+      "trustRoles": "Trust this tenant's App Roles",
+      "trustRolesHint": "Roles assigned in this tenant's Entra ID become global roles. Only enable for tenants you administer."
     }
   },
   "location": {

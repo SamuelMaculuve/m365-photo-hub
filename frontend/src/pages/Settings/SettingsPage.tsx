@@ -6,6 +6,8 @@ import { useLibraries } from '@/hooks/usePlaces'
 import { useLocale } from '@/hooks/useLocale'
 import { formatNumber } from '@/lib/format'
 import { Card } from '@/components/ui/card'
+import { OrganizationBadge } from '@/components/ui/organization-badge'
+import { LinkedAccountsCard } from '@/components/settings/LinkedAccountsCard'
 import { Label, Select } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,6 +60,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {user && <LinkedAccountsCard user={user} />}
+
         <Card>
           <h2 className="mb-3 text-base font-semibold">{t('settings.libraries')}</h2>
           {libraries.isLoading ? (
@@ -76,6 +80,9 @@ export default function SettingsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{l.name}</p>
                       {l.description && <p className="truncate text-xs text-muted">{l.description}</p>}
+                      {l.organization && (user?.organizations?.length ?? 0) > 1 && (
+                        <OrganizationBadge organization={l.organization} className="mt-1" />
+                      )}
                     </div>
                     <div className="text-right text-xs text-muted">
                       <p>{t('settings.itemCount', { count: l.media_count, formatted: formatNumber(l.media_count, locale) })}</p>
