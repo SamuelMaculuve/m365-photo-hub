@@ -34,6 +34,6 @@ let thumbs: BlobStore | null = null
 export const memoryThumbnails = new MemoryStore()
 
 export function thumbnailStore(): BlobStore {
-  thumbs ??= process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT ? new NetlifyStore('thumbnails') : memoryThumbnails
+  thumbs ??= process.env.NETLIFY_FUNCTION || process.env.NETLIFY_BLOBS_CONTEXT ? new NetlifyStore('thumbnails') : memoryThumbnails
   return thumbs
 }

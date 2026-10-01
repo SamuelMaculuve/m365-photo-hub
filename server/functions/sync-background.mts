@@ -1,10 +1,9 @@
+import '../src/netlify-env'
 import type { Context } from '@netlify/functions'
 import { getDb } from '../src/db/client'
 import { safeEqual } from '../src/lib/crypto'
 import { SyncManager } from '../src/services/sync/manager'
 import { syncSecret } from '../src/services/sync/trigger'
-
-process.env.REQUIRE_DATABASE_URL = '1'
 
 /**
  * Background Function (sufixo "-background": o Netlify responde 202 e deixa-a correr até 15 min).

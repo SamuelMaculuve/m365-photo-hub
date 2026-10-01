@@ -53,6 +53,10 @@ export const adminMiscRoutes = new Hono<AppEnv>()
     // O reconhecimento facial (Python/ONNX) não corre em Netlify Functions.
     return c.json({ data: { enabled: false, available: false, scanned: 0, pending: 0, faces: 0, people: 0 } })
   })
+  .post('/faces/purge', (c) => {
+    requireRole(c, 'super_admin')
+    return c.json({ data: { purged: true } })
+  })
   .get('/audit-logs', async (c) => {
     requireRole(c, 'super_admin')
     const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)

@@ -1,10 +1,9 @@
+import '../src/netlify-env'
 import type { Config } from '@netlify/functions'
 import { getDb } from '../src/db/client'
 import { config as appConfig } from '../src/config'
 import { SyncManager } from '../src/services/sync/manager'
 import { kickSync } from '../src/services/sync/trigger'
-
-process.env.REQUIRE_DATABASE_URL = '1'
 
 /**
  * Agendada (a cada 5 min): cria sincronizações incrementais para os drives em atraso e processa
