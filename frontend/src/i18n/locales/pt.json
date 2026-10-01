@@ -287,7 +287,17 @@
     "count_other": "{{formatted}} itens",
     "emptyTitle": "Ainda não há locais",
     "emptyBody": "Os locais aparecem quando as fotografias têm coordenadas GPS.",
-    "noMedia": "Não há fotografias neste local."
+    "noMedia": "Não há fotografias neste local.",
+    "view": "Vista",
+    "viewList": "Lista",
+    "viewMap": "Mapa",
+    "mapLabel": "Mapa dos locais das fotografias",
+    "openPlace": "Ver fotografias",
+    "noCoordsTitle": "Nenhum local com coordenadas",
+    "noCoordsBody": "Os locais sem coordenadas só aparecem na vista de lista.",
+    "withoutCoords_one": "{{count}} local sem coordenadas só aparece na vista de lista.",
+    "withoutCoords_other": "{{count}} locais sem coordenadas só aparecem na vista de lista.",
+    "attribution": "Dados de localidades © <geoLink>GeoNames</geoLink> (CC BY 4.0)"
   },
   "search": {
     "title": "Pesquisa",
@@ -629,5 +639,36 @@
       "purgeConfirmBody": "Todos os rostos detectados, pessoas e nomes serão apagados permanentemente. Se o reconhecimento continuar activo, as fotografias serão analisadas de novo.",
       "purged": "Dados faciais apagados."
     }
+  },
+  "location": {
+    "set": "Definir local",
+    "add": "Adicionar local",
+    "edit": "Alterar local",
+    "unknown": "Local desconhecido",
+    "clear": "Remover local",
+    "title_one": "Definir local de {{count}} fotografia",
+    "title_other": "Definir local de {{count}} fotografias",
+    "hint": "Para fotografias sem GPS (por exemplo, câmaras sem receptor GPS). O GPS real das fotografias nunca é substituído.",
+    "search": "Procurar localidade",
+    "noResults": "Nenhuma localidade encontrada.",
+    "saved_one": "Local \"{{place}}\" definido em {{count}} fotografia.",
+    "saved_other": "Local \"{{place}}\" definido em {{count}} fotografias.",
+    "cleared_one": "Local removido de {{count}} fotografia.",
+    "cleared_other": "Local removido de {{count}} fotografias.",
+    "noneChanged": "Nenhuma fotografia foi alterada (já têm GPS ou não tem permissão).",
+    "source": {
+      "estimated": "estimado",
+      "manual": "manual"
+    },
+    "sourceHint": {
+      "estimated": "Estimado a partir de outra fotografia tirada pouco antes ou depois, com GPS.",
+      "manual": "Definido manualmente por um editor."
+    },
+    "near": "perto de <placeLink>{{place}}</placeLink> (~{{km}} km)",
+    "openInMap": "Abrir no mapa",
+    "openInMapHint": "Abre o OpenStreetMap num novo separador",
+    "areaEstimated": "Local possível (estimado)",
+    "areaManual": "Local aproximado (definido manualmente)",
+    "mapLabel": "Mapa da localização da fotografia"
   }
 }

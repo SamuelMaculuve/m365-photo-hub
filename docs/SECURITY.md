@@ -56,7 +56,8 @@ incrementada sempre que bibliotecas, acessos ou utilizadores mudam.
 
 - **GPS**: a definição `gps_precision` pode ser `exact`, `city` (só a localidade) ou `hidden`. O GPS só é
   visível a quem pode ver a fotografia.
-- **Geocodificação offline**: nenhuma coordenada é enviada a serviços externos.
+- **Geocodificação offline**: o nome da localidade é calculado com a base GeoNames importada (licença CC BY 4.0, atribuição: "Dados de localidades © GeoNames"); nenhuma coordenada é enviada para esse cálculo.
+- **Mapas**: os mapas usam imagens do OpenStreetMap. O browser do utilizador pede ao OpenStreetMap as imagens da zona mostrada, o que revela ao OpenStreetMap a área visualizada, mas nunca a fotografia. Com `gps_precision = city` ou `hidden` não há coordenadas, e portanto não há mapa.
 - **IA e reconhecimento facial**: desligados por omissão. A análise facial exige activação explícita de
   `faces_enabled` pelo super administrador, e o fornecedor de IA recebe miniaturas, nunca originais.
   Os resultados ficam separados (`media_analysis`, `media_tags.source = ai`).

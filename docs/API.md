@@ -256,3 +256,14 @@ Admin:
 | POST | `/api/admin/faces/purge` | `{ "confirm": "APAGAR" }` — apaga **todos** os dados faciais (super_admin) |
 
 Bibliotecas (admin): novo campo booleano `allow_faces` (como `allow_ai`).
+
+## Localização manual e estimada
+
+A localização de cada fotografia tem uma origem (`location.source` no detalhe):
+`graph` (GPS lido pelo Microsoft 365), `exif` (GPS lido do ficheiro, incluindo HEIC), `estimated`
+(copiado de uma fotografia com GPS da mesma biblioteca tirada até 3 h antes ou depois) ou `manual`.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/places/catalog` | Localidades conhecidas `[{ name, region, latitude, longitude }]` |
+| POST | `/api/photos/location` | `{ ids: [..] (máx. 1000), place?: "Pemba", latitude?, longitude?, clear?: bool, overwrite_gps?: bool }` → `{ data: { affected, place } }`. Editor+. Por omissão só altera fotografias sem GPS real (sem origem, `estimated` ou `manual`) |

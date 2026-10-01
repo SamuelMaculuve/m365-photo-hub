@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Calendar, Camera, FolderOpen, UserRound, HardDrive, Image as ImageIcon, Library, MapPin, Sparkles, Tag, Type, Users, X, Album as AlbumIcon } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import type { Media, MediaDetail } from '@/types'
-import { formatBytes, formatDateTime } from '@/lib/format'
+import { Calendar, Camera, ExternalLink, FolderOpen, UserRound, HardDrive, Image as ImageIcon, Library, MapPin, Sparkles, Tag, Type, Users, X, Album as AlbumIcon } from 'lucide-react'
+import { Trans, useTranslation } from 'react-i18next'
+import type { Media, MediaDetail, MediaLocation } from '@/types'
+import { formatBytes, formatDateTime, formatNumber, intlLocale } from '@/lib/format'
+import { MiniMap, type MiniMapVariant } from '@/components/map'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/ui/states'
 import { PeopleChips } from '@/components/people/PeopleChips'
 import { useCanEditPeople } from '@/hooks/usePeople'
+import { SetLocationDialog } from '@/components/places/SetLocationDialog'
 
 function Row({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -26,13 +28,100 @@ function camera(detail: MediaDetail): string | null {
   const m = detail.metadata
   if (!m) return null
   const parts = [
-    [m.camera_make, m.camera_model].filter(Boolean).join(' '),
+    // "Canon" + "Canon EOS 800D" → "Canon EOS 800D"
+    m.camera_model && m.camera_make && String(m.camera_model).toLowerCase().startsWith(String(m.camera_make).toLowerCase())
+      ? String(m.camera_model)
+      : [m.camera_make, m.camera_model].filter(Boolean).join(' '),
     m.f_number ? `ƒ/${Number(Number(m.f_number).toFixed(1))}` : '',
     m.exposure_time ? `${m.exposure_time}s` : '',
     m.focal_length ? `${Number(Number(m.focal_length).toFixed(1))}mm` : '',
     m.iso ? `ISO ${m.iso}` : '',
   ].filter(Boolean)
   return parts.length ? parts.join(' · ') : null
+}
+
+/** Nome do país; omitido para Moçambique (o país da organização). */
+function countryName(code: string | null | undefined, locale: string): string | null {
+  if (!code || code.toUpperCase() === 'MZ') return null
+  try {
+    return new Intl.DisplayNames([intlLocale(locale)], { type: 'region' }).of(code.toUpperCase()) ?? code
+  } catch {
+    return code
+  }
+}
+
+/** Distância arredondada: uma casa decimal abaixo de 10 km, inteiros acima. */
+function formatKm(km: number, locale: string): string {
+  return formatNumber(km < 10 ? Math.round(km * 10) / 10 : Math.round(km), locale)
+}
+
+function osmUrl(lat: number, lng: number): string {
+  const la = lat.toFixed(5)
+  const lo = lng.toFixed(5)
+  return `https://www.openstreetmap.org/?mlat=${la}&mlon=${lo}#map=15/${la}/${lo}`
+}
+
+function LocationDetails({ location, locale }: { location: MediaLocation; locale: string }) {
+  const { t } = useTranslation()
+  const { place, latitude, longitude, distance_km: km, source } = location
+  const href = place ? `/places?place=${encodeURIComponent(place)}` : ''
+  const link = place ? <Link className="text-accent hover:underline" to={href}>{place}</Link> : null
+  const area = [location.region, countryName(location.country, locale)].filter(Boolean).join(', ')
+  const hasCoords = latitude != null && longitude != null
+  const variant: MiniMapVariant = source === 'estimated' ? 'estimated' : source === 'manual' ? 'manual' : 'point'
+  return (
+    <>
+      {/* distance_km só vem preenchido quando o ponto está fora da área do local nomeado. */}
+      {place && km != null ? (
+        <span>
+          <Trans
+            i18nKey="location.near"
+            values={{ place, km: formatKm(km, locale) }}
+            components={{ placeLink: <Link className="text-accent hover:underline" to={href} /> }}
+          />
+        </span>
+      ) : (
+        link
+      )}
+      {source === 'estimated' || source === 'manual' ? (
+        <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted" title={t(`location.sourceHint.${source}`)}>
+          {t(`location.source.${source}`)}
+        </span>
+      ) : null}
+      {area && <span className="block text-xs text-muted">{area}</span>}
+      {hasCoords && (
+        <span className="block text-xs text-muted">
+          {latitude.toFixed(4)}, {longitude.toFixed(4)}
+        </span>
+      )}
+      {hasCoords && (
+        <div className="mt-2">
+          <MiniMap
+            latitude={latitude}
+            longitude={longitude}
+            variant={variant}
+            ariaLabel={place ? `${t('location.mapLabel')}: ${place}` : t('location.mapLabel')}
+            className="relative z-0 h-40 w-full overflow-hidden rounded-xl border border-border"
+          />
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+            {variant !== 'point' ? (
+              <span className="text-muted">{t(variant === 'estimated' ? 'location.areaEstimated' : 'location.areaManual')}</span>
+            ) : <span />}
+            <a
+              className="inline-flex items-center gap-1 text-accent hover:underline"
+              href={osmUrl(latitude, longitude)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t('location.openInMapHint')}
+            >
+              {t('location.openInMap')}
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 interface InfoPanelProps {
@@ -48,6 +137,7 @@ export function InfoPanel({ item, detail, loading, error, locale, onClose }: Inf
   const { t } = useTranslation()
   const cam = detail ? camera(detail) : null
   const canEditPeople = useCanEditPeople()
+  const [locationOpen, setLocationOpen] = useState(false)
   return (
     <aside
       aria-label={t('viewer.info')}
@@ -81,16 +171,18 @@ export function InfoPanel({ item, detail, loading, error, locale, onClose }: Inf
           {cam && <Row icon={<Camera />} label={t('viewer.camera')}>{cam}</Row>}
           {detail?.folder_path && <Row icon={<FolderOpen />} label={t('viewer.folder')}>{detail.folder_path}</Row>}
           {detail?.library && <Row icon={<Library />} label={t('viewer.library')}>{detail.library.name}</Row>}
-          {detail?.location && (
+          {(detail?.location || (detail && canEditPeople)) && (
             <Row icon={<MapPin />} label={t('viewer.location')}>
-              {detail.location.place ? (
-                <Link className="text-accent hover:underline" to={`/places?place=${encodeURIComponent(detail.location.place)}`}>
-                  {detail.location.place}
-                </Link>
-              ) : null}
-              <span className="block text-xs text-muted">
-                {detail.location.latitude.toFixed(4)}, {detail.location.longitude.toFixed(4)}
-              </span>
+              {detail?.location ? (
+                <LocationDetails location={detail.location} locale={locale} />
+              ) : (
+                <span className="text-muted">{t('location.unknown')}</span>
+              )}
+              {canEditPeople && (
+                <button type="button" className="mt-1 block text-xs text-accent hover:underline" onClick={() => setLocationOpen(true)}>
+                  {detail?.location ? t('location.edit') : t('location.add')}
+                </button>
+              )}
             </Row>
           )}
           {detail?.people && detail.people.length > 0 && (
@@ -139,6 +231,7 @@ export function InfoPanel({ item, detail, loading, error, locale, onClose }: Inf
           </section>
         )}
       </div>
+      {canEditPeople && <SetLocationDialog open={locationOpen} onOpenChange={setLocationOpen} mediaIds={[item.id]} />}
     </aside>
   )
 }

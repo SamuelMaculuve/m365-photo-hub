@@ -10,6 +10,11 @@ import { ErrorState, useErrorMessage } from '@/components/ui/states'
 import { toast } from '@/components/ui/toast'
 import { PhotoViewer } from '@/components/viewer/PhotoViewer'
 import { AddToAlbumDialog } from '@/components/albums/AddToAlbumDialog'
+import { SetLocationDialog } from '@/components/places/SetLocationDialog'
+import { useCanEditPeople } from '@/hooks/usePeople'
+import { Tooltip } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { MapPin } from 'lucide-react'
 import { ShareDialog } from '@/components/share/ShareDialog'
 import { PhotoGrid, type PhotoGridHandle } from './PhotoGrid'
 import { GridSkeleton } from './GridSkeleton'
@@ -41,6 +46,8 @@ export function MediaBrowser({ query, label, empty, groupByDay = true, buckets, 
   const favourite = useToggleFavourite()
   const bulk = useBulkAction()
   const [albumOpen, setAlbumOpen] = useState(false)
+  const [locationOpen, setLocationOpen] = useState(false)
+  const canEdit = useCanEditPeople()
   const [shareOpen, setShareOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
 
@@ -113,7 +120,18 @@ export function MediaBrowser({ query, label, empty, groupByDay = true, buckets, 
         onAddToAlbum={() => setAlbumOpen(true)}
         onShare={() => setShareOpen(true)}
         onTrash={allowTrash ? () => setTrashOpen(true) : undefined}
-        extra={selectionExtra?.(ids, selection.clear)}
+        extra={
+          <>
+            {canEdit && (
+              <Tooltip content={t('location.set')}>
+                <Button variant="ghost" size="icon" aria-label={t('location.set')} onClick={() => setLocationOpen(true)} disabled={bulk.isPending}>
+                  <MapPin />
+                </Button>
+              </Tooltip>
+            )}
+            {selectionExtra?.(ids, selection.clear)}
+          </>
+        }
       />
       <PhotoGrid
         items={items}
@@ -139,6 +157,7 @@ export function MediaBrowser({ query, label, empty, groupByDay = true, buckets, 
         />
       )}
       <AddToAlbumDialog open={albumOpen} onOpenChange={setAlbumOpen} mediaIds={ids} onDone={selection.clear} />
+      {canEdit && <SetLocationDialog open={locationOpen} onOpenChange={setLocationOpen} mediaIds={ids} onDone={selection.clear} />}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} target={{ type: 'media', media_ids: ids }} />
       <ConfirmDialog
         open={trashOpen}

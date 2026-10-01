@@ -34,10 +34,33 @@ export interface MediaMetadata {
   [key: string]: unknown
 }
 
+export type LocationSource = 'graph' | 'exif' | 'estimated' | 'manual'
+
 export interface MediaLocation {
+  latitude: number | null
+  longitude: number | null
+  place: string | null
+  /** Região/província do local (opcional; APIs antigas não a enviam). */
+  region?: string | null
+  /** País do local, código ISO 3166-1 alfa-2. */
+  country?: string | null
+  /** Distância (km) entre as coordenadas e o local nomeado; > 3 km ⇒ "perto de". */
+  distance_km?: number | null
+  /** Origem: GPS (graph/exif), estimado a partir de fotos próximas, ou definido manualmente. */
+  source?: LocationSource | null
+}
+
+export interface CatalogPlace {
+  name: string
+  region: string
   latitude: number
   longitude: number
-  place: string | null
+}
+
+export interface SetLocationInput {
+  ids: number[]
+  place?: string
+  clear?: boolean
 }
 
 export interface MediaCan {

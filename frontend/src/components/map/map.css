@@ -1,0 +1,71 @@
+/* Estilos dos mapas Leaflet (carregados só com o módulo lazy). */
+.leaflet-container {
+  font: inherit;
+  background: var(--surface-2);
+}
+
+.fotos-map-pin span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+}
+
+.fotos-map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 10rem;
+  font-size: 0.8125rem;
+}
+.fotos-map-popup img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  background: var(--surface-2);
+}
+.fotos-map-popup span {
+  color: var(--muted);
+}
+.fotos-map-popup button {
+  margin-top: 0.25rem;
+  align-self: flex-start;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 500;
+  cursor: pointer;
+}
+.fotos-map-popup button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+/* Modo escuro: escurecer ligeiramente os mosaicos do OSM. */
+.dark .fotos-map-tiles {
+  filter: brightness(0.75) contrast(1.1) saturate(0.8);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .fotos-map-tiles {
+    filter: brightness(0.75) contrast(1.1) saturate(0.8);
+  }
+  :root:not(.light) .leaflet-control-attribution {
+    background: rgb(27 27 26 / 0.8);
+    color: var(--muted);
+  }
+  :root:not(.light) .leaflet-control-attribution a {
+    color: var(--accent);
+  }
+}

@@ -40,6 +40,7 @@ php artisan key:generate
 # Edite .env: DB_*, REDIS_*, e (quando tiver o registo no Entra ID) MICROSOFT_*
 mysql -h127.0.0.1 -P8889 -uroot -proot -e "CREATE DATABASE photos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 php artisan migrate
+php artisan photos:geo-import      # localidades GeoNames (geocodificação offline, ~10 s)
 
 # 2. Frontend
 cd ../frontend
@@ -95,6 +96,9 @@ cd frontend && npm run typecheck && npm run lint && npm run build
 | `php artisan photos:demo --count=N [--fresh]` | Biblioteca de demonstração |
 | `php artisan photos:make-admin email [--role=super_admin]` | Promove um utilizador |
 | `php artisan photos:prune-thumbnails` | Limpa miniaturas antigas da cache |
+| `php artisan photos:geo-import [--countries=MZ]` | Importa localidades GeoNames (mundo > 1 000 hab. + todas as povoações dos países indicados) |
+| `php artisan photos:places-refresh` | Recalcula a localidade de todas as fotografias com coordenadas |
+| `php artisan photos:metadata [--library=ID] [--estimate]` | Lê EXIF (JPEG/HEIC) de fotos sem data/local e estima locais |
 
 ## Estrutura
 

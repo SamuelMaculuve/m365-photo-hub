@@ -287,7 +287,17 @@
     "count_other": "{{formatted}} items",
     "emptyTitle": "No places yet",
     "emptyBody": "Places appear when photos have GPS coordinates.",
-    "noMedia": "There are no photos in this place."
+    "noMedia": "There are no photos in this place.",
+    "view": "View",
+    "viewList": "List",
+    "viewMap": "Map",
+    "mapLabel": "Map of photo places",
+    "openPlace": "View photos",
+    "noCoordsTitle": "No places with coordinates",
+    "noCoordsBody": "Places without coordinates only appear in the list view.",
+    "withoutCoords_one": "{{count}} place without coordinates only appears in the list view.",
+    "withoutCoords_other": "{{count}} places without coordinates only appear in the list view.",
+    "attribution": "Place data © <geoLink>GeoNames</geoLink> (CC BY 4.0)"
   },
   "search": {
     "title": "Search",
@@ -629,5 +639,36 @@
       "purgeConfirmBody": "All detected faces, people and names will be permanently deleted. If recognition stays enabled, photos will be analysed again.",
       "purged": "Face data deleted."
     }
+  },
+  "location": {
+    "set": "Set location",
+    "add": "Add location",
+    "edit": "Change location",
+    "unknown": "Unknown location",
+    "clear": "Remove location",
+    "title_one": "Set location of {{count}} photo",
+    "title_other": "Set location of {{count}} photos",
+    "hint": "For photos without GPS (e.g. cameras without a GPS receiver). Real GPS data is never overwritten.",
+    "search": "Search place",
+    "noResults": "No places found.",
+    "saved_one": "Location \"{{place}}\" set on {{count}} photo.",
+    "saved_other": "Location \"{{place}}\" set on {{count}} photos.",
+    "cleared_one": "Location removed from {{count}} photo.",
+    "cleared_other": "Location removed from {{count}} photos.",
+    "noneChanged": "No photos were changed (they already have GPS or you lack permission).",
+    "source": {
+      "estimated": "estimated",
+      "manual": "manual"
+    },
+    "sourceHint": {
+      "estimated": "Estimated from another photo with GPS taken shortly before or after.",
+      "manual": "Set manually by an editor."
+    },
+    "near": "near <placeLink>{{place}}</placeLink> (~{{km}} km)",
+    "openInMap": "Open in map",
+    "openInMapHint": "Opens OpenStreetMap in a new tab",
+    "areaEstimated": "Possible location (estimated)",
+    "areaManual": "Approximate location (set manually)",
+    "mapLabel": "Map of the photo location"
   }
 }

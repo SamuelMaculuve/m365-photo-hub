@@ -53,7 +53,8 @@ settings (chave/valor)
 | `taken_at` | Facet `photo.takenDateTime` ou EXIF |
 | `source_created_at`, `source_modified_at` | `fileSystemInfo` |
 | `sort_at` | `taken_at ?? source_created_at`, calculado pela aplicação (portável e indexável) |
-| `latitude`, `longitude`, `place_name`, `place_region` | Facet `location` / EXIF + geocodificação offline |
+| `latitude`, `longitude`, `place_name`, `place_region`, `place_country`, `place_distance_km` | Facet `location` / EXIF (JPEG e HEIC) + geocodificação offline (GeoNames). `place_distance_km` nulo = dentro da localidade; > 0 = "perto de" |
+| `location_source`, `location_set_by` | `graph`, `exif`, `estimated` (fotografia próxima no tempo), `manual` |
 | `checksum` | `quickXorHash` (futura detecção de duplicados) |
 | `etag`, `ctag` | Detecção de alterações: um cTag diferente significa conteúdo novo (invalida miniaturas e EXIF) |
 | `metadata` (JSON) | Câmara, lente, ISO, abertura, exposição… **apenas metadados originais** |
@@ -87,6 +88,7 @@ Ficam em Redis (10 min) ou são obtidos no momento.
 | `sync_jobs` | `type` (`initial`/`incremental`/`full_resync`), `status`, contadores, `total_estimate` |
 | `sync_logs` | `level`, `code`, `message`, `item_id`, `context`. Retenção: 90 dias |
 | `audit_logs` | `user_id`, `action`, `subject_type/id`, `ip`, `result`, `context`. Retenção: 365 dias |
+| `geo_places` | Localidades GeoNames (id, nome, país, região, lat/lng, população, código). Índice (latitude, longitude). ~184 mil linhas |
 | `settings` | `public_links_enabled`, `max_share_days`, `ai_enabled`, `faces_enabled`, `gps_precision` |
 | `jobs`, `failed_jobs`, `cache` | Laravel (usados se não houver Redis) |
 
