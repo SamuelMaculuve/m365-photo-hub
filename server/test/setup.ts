@@ -1,6 +1,5 @@
-import { afterEach, beforeAll, beforeEach } from 'vitest'
-import { sql } from 'drizzle-orm'
-import { createPgliteDb, setDb, type Db } from '../src/db/client'
+import { afterEach, beforeEach } from 'vitest'
+import { createMemoryDb, setDb, type Db } from '../src/db/client'
 import { setSleep } from '../src/microsoft/graph'
 import { resetFetch } from './helpers'
 
@@ -15,22 +14,16 @@ Object.assign(process.env, {
   MICROSOFT_BOOTSTRAP_SUPER_ADMINS: '',
   AUTH_DEV_LOGIN: 'false',
 })
-delete process.env.NETLIFY_DATABASE_URL
-delete process.env.DATABASE_URL
-delete process.env.PGLITE_DIR
+delete process.env.TURSO_DATABASE_URL
+delete process.env.TURSO_AUTH_TOKEN
+process.env.SQLITE_FILE = ':memory:'
 
 let db: Db
 
-beforeAll(async () => {
-  db = await createPgliteDb()
-  setDb(db)
-})
-
 beforeEach(async () => {
-  // Base limpa em cada teste (mais rápido do que recriar o PGlite).
-  const rows = await db.execute(sql`select tablename from pg_tables where schemaname = 'public'`)
-  const tables = (rows as unknown as { rows: { tablename: string }[] }).rows.map((r) => `"${r.tablename}"`)
-  if (tables.length) await db.execute(sql.raw(`truncate ${tables.join(', ')} restart identity cascade`))
+  // Base nova em memória em cada teste (SQLite cria-a e migra-a em milissegundos).
+  db = await createMemoryDb()
+  setDb(db)
   setSleep(async () => undefined)
   resetFetch()
 })

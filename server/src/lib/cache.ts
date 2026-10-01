@@ -2,7 +2,7 @@ import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm'
 import type { Db } from '../db/client'
 import { cacheEntries } from '../db/schema'
 
-/** Cache, locks e contadores partilhados entre invocações serverless, guardados no Postgres. */
+/** Cache, locks e contadores partilhados entre invocações serverless, guardados na base de dados (substitui o Redis). */
 export class Cache {
   constructor(private readonly db: Db) {}
 
@@ -63,10 +63,10 @@ export class Cache {
     const window = Math.floor(Date.now() / 1000 / windowSeconds)
     const k = `rate:${key}:${window}`
     const expiresAt = new Date((window + 1) * windowSeconds * 1000)
-    const [row] = await this.db.insert(cacheEntries).values({ key: k, value: sql`'1'::jsonb`, expiresAt })
-      .onConflictDoUpdate({ target: cacheEntries.key, set: { value: sql`to_jsonb((${cacheEntries.value})::text::int + 1)` } })
-      .returning({ value: cacheEntries.value })
-    const count = Number(row?.value ?? 1)
+    const [row] = await this.db.insert(cacheEntries).values({ key: k, value: {}, counter: 1, expiresAt })
+      .onConflictDoUpdate({ target: cacheEntries.key, set: { counter: sql`${cacheEntries.counter} + 1` } })
+      .returning({ counter: cacheEntries.counter })
+    const count = Number(row?.counter ?? 1)
     return { ok: count <= limit, retryAfter: Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000)) }
   }
 

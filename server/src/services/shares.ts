@@ -99,7 +99,7 @@ export class ShareService {
       ? sql`exists (select 1 from ${s.albumMedia} where ${s.albumMedia.mediaId} = ${s.media.id} and ${s.albumMedia.albumId} = ${share.albumId})`
       : sql`exists (select 1 from ${s.shareMedia} where ${s.shareMedia.mediaId} = ${s.media.id} and ${s.shareMedia.shareId} = ${share.id})`)
     if (share.audience === 'public') {
-      conds.push(sql`exists (select 1 from ${s.libraries} where ${s.libraries.id} = ${s.media.libraryId} and ${s.libraries.allowPublicLinks} = true)`)
+      conds.push(sql`exists (select 1 from ${s.libraries} where ${s.libraries.id} = ${s.media.libraryId} and ${s.libraries.allowPublicLinks} = 1)`)
     }
     return conds
   }

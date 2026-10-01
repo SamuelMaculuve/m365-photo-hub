@@ -108,7 +108,7 @@ export class SyncManager {
         await this.cache.release(lock)
       }
     }
-    const [{ n }] = await this.db.select({ n: sql<number>`count(*)::int` }).from(s.syncJobs).where(inArray(s.syncJobs.status, ['queued', 'running']))
+    const [{ n }] = await this.db.select({ n: sql<number>`count(*)` }).from(s.syncJobs).where(inArray(s.syncJobs.status, ['queued', 'running']))
     return n > 0
   }
 

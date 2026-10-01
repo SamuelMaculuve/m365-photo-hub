@@ -3,6 +3,7 @@ import { createApp } from '../src/app'
 import { getDb } from '../src/db/client'
 import * as s from '../src/db/schema'
 import { randomToken, sha256 } from '../src/lib/crypto'
+import { withFolded } from '../src/services/folded'
 
 // ---------------------------------------------------------------------------
 // Simulador de fetch (Microsoft Graph e login.microsoftonline.com)
@@ -126,12 +127,12 @@ export async function makeMedia(library: { id: number }, drive: { id: number }, 
   const db = await getDb()
   const i = n()
   const taken = attrs.takenAt ?? new Date(Date.UTC(2026, 8, 1, 10) - i * 3600_000)
-  const [m] = await db.insert(s.media).values({
+  const [m] = await db.insert(s.media).values(withFolded({
     libraryId: library.id, driveId: drive.id, itemId: `01ITEM${i}`, parentItemId: 'folder-1', name: `IMG_${i}.jpg`, folderPath: '/Fotos/2026',
     mediaType: 'image', mimeType: 'image/jpeg', size: 2_000_000, width: 4000, height: 3000, takenAt: taken, sourceCreatedAt: taken,
     sourceModifiedAt: taken, sortAt: taken, etag: `etag-${i}`, ctag: `ctag-${i}`, webUrl: 'https://contoso.sharepoint.com/file.jpg',
     sourceState: 'active', metadataExtracted: true, ...attrs,
-  }).returning()
+  })).returning()
   return m
 }
 
